@@ -22,7 +22,7 @@ RUN set -Eeux && \
 RUN GOOS=linux GOARCH=amd64 CGO_ENABLED=0 \
     go build \
     -trimpath \
-    -ldflags="-w -s -X 'main.Version=${PROJECT_VERSION}'" \
+    -ldflags="-w -s -X 'main.Revision=$(git rev-parse --short HEAD)'" -X 'main.Version=$(git describe --abbrev=0 --tags)'" \
     -o glowplug main.go
 # RUN go test -cover -v ./...
 
