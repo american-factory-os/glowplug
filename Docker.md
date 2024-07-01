@@ -1,30 +1,19 @@
-# Docker
+**Glowplug** makes it easier to work with Sparkplug B data over MQTT for Industrial IoT (IIoT) applications.
 
-## Build
+https://github.com/american-factory-os/glowplug
 
-Example:
+## Why Glowplug?
 
-```bash
-docker buildx build --build-arg PROJECT_VERSION=0.0.0-devel -t american-factory-os/glowplug:latest .
-```
+If you're new to IIoT or industrial automation, Sparkplug data can be difficult to work with, and it's binary encoding is not human readable. Glowplug is designed to demystify Sparkplug data, by making every metric value more accessible and human readable. 
 
-Or without [BuildKit](https://docs.docker.com/build/):
+If you need to know the current value of a specific metric on your edge without talking to a MQTT broker, Glowplug makes it available for you in Redis. You can also subscribe to that value in Redis when it updates.
 
-```bash
-docker build --build-arg PROJECT_VERSION=0.0.0-devel -t american-factory-os/glowplug:latest .
-```
+If you want individual metrics exposed in a UNS when they update, Glowplug can optionally publish them for you.
 
-Push a tag to docker hub
-
-```bash
-docker tag 03b49dcb30eb american-factory-os/glowplug:latest
-docker push american-factory-os/glowplug:latest
-```
-
-## Local development
+## Quickstart
 
 You will need to set network to "host" so docker can access local services, e.g.:
 
 ```bash
-docker run --rm --name glowplug --network="host" american-factory-os/glowplug:latest start --redis redis://localhost:6379/0 --publish mqtt://localhost:1883
+docker run --network="host" aphexddb/glowplug:latest start --redis redis://localhost:6379/0 --publish mqtt://localhost:1883
 ```

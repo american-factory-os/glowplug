@@ -10,18 +10,20 @@ If you want individual metrics exposed in a UNS when they update, Glowplug can o
 
 ## Quickstart
 
-If you have Go installed, install glowplug from the command line:
+```bash
+docker run --network="host" aphexddb/glowplug:latest start
+```
+
+Or, if you have Go installed, install glowplug from the command line:
 
 ```bash
 go install github.com/american-factory-os/glowplug@latest
-
-# start glowplug listening and publishing to your local broker
-glowplug start --mqtt mqtt://localhost:1883 --publish mqtt://localhost:1883
+glowplug start
 ```
 
-Or, try providing a redis url:
+Try providing a redis url and the url of a broker to publish metric data to:
 ```bash
-glowplug start --mqtt mqtt://localhost:1883 --redis redis://localhost:6379 
+glowplug start --redis redis://localhost:6379/0 --publish mqtt://localhost:1883
 ```
 
 ## Features
