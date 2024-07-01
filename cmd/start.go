@@ -70,7 +70,7 @@ readable data to MQTT.`,
 
 func init() {
 	rootCmd.AddCommand(startCmd)
-	startCmd.PersistentFlags().StringP("mqtt", "m", "mqtt://localhost:1883", "MQTT broker URL to listen on")
-	startCmd.PersistentFlags().StringP("publish", "p", "", "Publish human readable Sparkplug data to MQTT broker, e.g. mqtt://localhost:1883")
-	startCmd.PersistentFlags().StringP("redis", "r", "redis://localhost:6379", "Redis URL to store Sparkplug data")
+	startCmd.PersistentFlags().StringP("mqtt", "m", "mqtt://localhost:1883", "MQTT broker URL to listen for Sparkplug messages")
+	startCmd.PersistentFlags().StringP("publish", "p", "", "Publish human readable Sparkplug metrics values to this MQTT broker, e.g. mqtt://localhost:1883")
+	startCmd.PersistentFlags().StringP("redis", "r", "", "Redis URL to store Sparkplug data, e.g. redis://localhost:6379/0")
 }

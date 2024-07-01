@@ -7,6 +7,7 @@ import (
 
 	"github.com/american-factory-os/glowplug/sparkplug"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
+	"github.com/redis/go-redis/v9"
 )
 
 type Glowplug interface {
@@ -38,10 +39,20 @@ func (g *glowplug) Start(ctx context.Context) error {
 		return fmt.Errorf("unable to subscribe to %s, %w", topic, token.Error())
 	}
 
+	if len(g.opts.RedisURL) == 0 && len(g.opts.PublishBrokerURL) == 0 {
+		g.logger.Println("warning: no redis or publish broker is enabled, glowplug wont do anything")
+	}
+
 	if len(g.opts.PublishBrokerURL) > 0 {
 		g.logger.Println("publishing human readable data to broker", g.opts.PublishBrokerURL)
 	} else {
-		g.logger.Println("not publishing human readable data to broker")
+		g.logger.Println("enable publishing metrics to a broker, ex: --publish mqtt://localhost:1883")
+	}
+
+	if len(g.opts.RedisURL) > 0 {
+		g.logger.Println("using redis for metric storage", g.opts.RedisURL)
+	} else {
+		g.logger.Println("enable publishing metric values to redis, ex: --redis redis://localhost:6379/0")
 	}
 
 	go func() {
@@ -87,7 +98,7 @@ func (g *glowplug) msgHandler() mqtt.MessageHandler {
 
 // New will create a new glowplug service
 func New(logger *log.Logger, opts Opts) (Glowplug, error) {
-	if len(opts.RedisURL) <= 14 {
+	if len(opts.RedisURL) > 0 && len(opts.RedisURL) <= 14 {
 		return nil, fmt.Errorf("redis URL too short")
 	}
 
@@ -99,10 +110,14 @@ func New(logger *log.Logger, opts Opts) (Glowplug, error) {
 		return nil, fmt.Errorf("publish broker URL too short: %s", opts.PublishBrokerURL)
 	}
 
-	logger.Println("connecting to redis", opts.RedisURL)
-	rdb, err := NewRedis(opts.RedisURL)
-	if err != nil {
-		return nil, err
+	var rdb *redis.UniversalClient
+	if len(opts.RedisURL) > 0 {
+		logger.Println("connecting to redis", opts.RedisURL)
+		redisClient, err := NewRedis(opts.RedisURL)
+		if err != nil {
+			return nil, err
+		}
+		rdb = redisClient
 	}
 
 	g := glowplug{

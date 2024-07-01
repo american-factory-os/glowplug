@@ -2,28 +2,26 @@
 **Glowplug** makes it easier to work with Sparkplug B data over MQTT for Industrial IoT (IIoT) applications.
 
 ## Why Glowplug?
-If you're new to IIoT or industrial automation, Sparkplug data can seem overwhelming. Every Sparkplug payload has a list of metrics in various data types, some of which you may not care about. Glowplug is designed to demystify Sparkplug data, by making metric values more accessible and human readable by extracting them from a payload into a Unified Namespace (UNS) context.
+If you're new to IIoT or industrial automation, Sparkplug data can seem overwhelming and it's binary encoding isn't human readable. Every Sparkplug payload has a list of metrics in various data types,  and Glowplug is designed to demystify Sparkplug data, by making metric values more accessible and human readable by extracting them from a payload into a Unified Namespace (UNS) context.
 
-If you need to know the current value of a specific metric without talking to a MQTT broker, Glowplug makes it avilable for you in Redis. You can also subscribe to this value in Redis.
+If you need to know the current value of a specific metric without talking to a MQTT broker, Glowplug makes it available for you in Redis. You can also subscribe to this value in Redis.
 
 If you want to republish individual metrics to a UNS, Glowplug can optionally publish them for you.
 
 ## Quickstart
 
-If you have Go installed, run it from the command line:
+If you have Go installed, install glowplug from the command line:
 
 ```bash
-# install glowplug
 go install github.com/american-factory-os/glowplug@latest
 
-# start collecting data
-glowplug start
+# start glowplug listening and publishing to your local broker
+glowplug start --mqtt mqtt://localhost:1883 --publish mqtt://localhost:1883
 ```
 
-or, get started with Glowplug using Docker:
-
+Or, try providing a redis url:
 ```bash
-docker run american-factory-os/glowplug:latest --mqtt mqtt://localhost:1883 --redis redis://localhost:6379 
+glowplug start --mqtt mqtt://localhost:1883 --redis redis://localhost:6379 
 ```
 
 ## Features
@@ -35,9 +33,11 @@ docker run american-factory-os/glowplug:latest --mqtt mqtt://localhost:1883 --re
 * Human-readable: Optionally publish Sparkplug metrics to human-readable MQTT topics.
 
 ## MQTT
-The flag `--mqtt` defined a URL to connect to your MQTT broker and listen for Sparkplug B messages. Enable the flag `--publish` to publish all metrics to unique MQTT topics. *Note: the `--publish` flag will generate new topics in your broker for each Sparkplug metric published!*
+The flag `--mqtt` contains the MQTT broker URL (e.g. [Mosquitto](https://github.com/eclipse/mosquitto)) to connect to and listen for Sparkplug B messages. When providing a MQTT url, it should start with "ws", "wss", or "mqtt".
 
-When passing a MQTT url, it should start with one of "tcp", "ssl", or "ws".
+Enable the flag `--publish` with another broker URL (could be the same one!) to publish all metrics to unique MQTT topics. 
+
+*Note: the `--publish` flag will generate new topics in your broker for each Sparkplug metric published!*
 
 ### Example Usage
 ```bash
@@ -46,11 +46,17 @@ glowplug start --publish mqtt://localhost:1883
 View your MQTT broker directly with [MQTT Explorer](https://mqtt-explorer.com/).
 
 ## Redis
-Enable Redis support with the flag `--redis` with a valid redis URL. When enabled, glowplug will store all Sparkplug metrics from birth and data messages in a set, and publish them to a channel of the same key as the set.
+If the flag `--redis` contains a valid redis URL, glowplug will store all Sparkplug metrics from birth and data messages in a set, and publish them to a channel of the same key as the set.
 
 ### Example Usage
 
-Explore glowplug data in Redis with [Redis Insight](https://redis.io/insight/). All data is prefixed with the value `glowplug`, so you can search for `glowplug:*`. If you are using [Node Red](https://nodered.org/), the [node-red-contrib-redis](https://flows.nodered.org/node/node-red-contrib-redis) module makes it easy to consume a redis channel containing Sparkplug metric data using the SUBSCRIBE method.
+```bash
+glowplug start --redis redis://localhost:6379
+```
+
+You can explore glowplug data in Redis with [Redis Insight](https://redis.io/insight/). All data is prefixed with the value `glowplug`, so you can search for `glowplug:*`. Glowplug also stores all the metric data types it has seen in the hash `glowplug:metric_types`. 
+
+If you are using [Node Red](https://nodered.org/), the [node-red-contrib-redis](https://flows.nodered.org/node/node-red-contrib-redis) module makes it easy to consume a redis channel containing Sparkplug metric data using the SUBSCRIBE method.
 
 <img src="example/redis-in-node-red.png" />
 

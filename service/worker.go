@@ -43,7 +43,7 @@ type worker struct {
 	size          int
 	messages      chan Message
 	results       chan Result
-	rdb           redis.UniversalClient
+	rdb           *redis.UniversalClient
 	publishBroker *mqtt.Client
 	total         uint64
 	errors        uint64
@@ -54,7 +54,8 @@ func (w *worker) Stop() {
 	w.state.Store(STATE_STOPPED)
 	close(w.messages)
 	if w.rdb != nil {
-		w.rdb.Close()
+		rdb := *w.rdb
+		rdb.Close()
 	}
 	if publishBroker, err := w.getPublishBroker(); err == nil {
 		defer publishBroker.Disconnect(250)
@@ -72,11 +73,6 @@ func (w *worker) processResult(result Result) error {
 
 	if result.payload == nil {
 		return fmt.Errorf("no payload found")
-	}
-
-	// skip processing if redis is not available
-	if w.rdb == nil {
-		return nil
 	}
 
 	if result.payload.Metrics == nil {
@@ -184,32 +180,38 @@ func (w *worker) processResult(result Result) error {
 				value = string(bytes)
 			}
 
+			// report new metric seen
+			typeName := sparkplug.DataType_name[int32(metric.Datatype)]
+			_, seen := w.seen[key]
+			if !seen {
+				w.seen[key] = true
+				w.logger.Println("new metric encountered", key, typeName, value)
+			}
+
 			// pipeline redis commands
-			if cmds, err := w.rdb.Pipelined(context.TODO(), func(pipeliner redis.Pipeliner) error {
+			if w.rdb != nil {
+				rdb := *w.rdb
+				if cmds, err := rdb.Pipelined(context.TODO(), func(pipeliner redis.Pipeliner) error {
 
-				// report new metric seen
-				if _, ok := w.seen[key]; !ok {
-					w.seen[key] = true
-					typeName := sparkplug.DataType_name[int32(metric.Datatype)]
-					w.logger.Println("new metric encountered", key, typeName, value)
+					if !seen {
+						// save human readable metric type in a redis hash
+						pipeliner.HSet(context.TODO(), HASH_METRIC_TYPES, key, typeName)
+					}
 
-					// save human readable metric type in a redis hash
-					pipeliner.HSet(context.TODO(), HASH_METRIC_TYPES, key, typeName)
-				}
+					// store the metric value in a redis set
+					pipeliner.Set(context.TODO(), key, value, 0)
 
-				// store the metric value in a redis set
-				pipeliner.Set(context.TODO(), key, value, 0)
+					// publish metric value to redis channel
+					pipeliner.Publish(context.TODO(), key, value)
 
-				// publish metric value to redis channel
-				pipeliner.Publish(context.TODO(), key, value)
-
-				return nil
-			}); err != nil {
-				return err
-			} else {
-				for _, cmd := range cmds {
-					if cmd.Err() != nil && cmd.Err() != redis.Nil {
-						return fmt.Errorf("redis cmd error %w", cmd.Err())
+					return nil
+				}); err != nil {
+					return err
+				} else {
+					for _, cmd := range cmds {
+						if cmd.Err() != nil && cmd.Err() != redis.Nil {
+							return fmt.Errorf("redis cmd error %w", cmd.Err())
+						}
 					}
 				}
 			}
@@ -359,7 +361,7 @@ func NewWorker(logger *log.Logger, rdb *redis.UniversalClient, publishBroker *mq
 		size:          size,
 		messages:      make(chan Message, size),
 		results:       make(chan Result, size),
-		rdb:           *rdb,
+		rdb:           rdb,
 		publishBroker: publishBroker,
 		seen:          make(map[string]bool),
 	}, nil
