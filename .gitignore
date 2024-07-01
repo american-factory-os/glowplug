@@ -21,6 +21,8 @@
 
 !*.png
 
+!.github/workflows/*
+
 # !Makefile
 
 # ...even if they are in subdirectories

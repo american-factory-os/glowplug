@@ -6,5 +6,5 @@ import (
 )
 
 func NewLogger() *log.Logger {
-	return log.New(os.Stdout, "glowplug: ", log.LstdFlags)
+	return log.New(os.Stdout, "", log.LstdFlags)
 }
