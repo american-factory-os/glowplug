@@ -34,7 +34,7 @@ func validateMQTTURL(rawURL string) (bool, error) {
 		return false, fmt.Errorf("port too short")
 	}
 
-	if len(u.Host) <= 3 {
+	if len(u.Host) <= 6 {
 		return false, fmt.Errorf("host too short")
 	}
 
