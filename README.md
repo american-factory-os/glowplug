@@ -21,7 +21,7 @@ go install github.com/american-factory-os/glowplug@latest
 glowplug start
 ```
 
-Try providing a redis url and the url of a broker to publish metric data to:
+Next, add a redis url, and the url of a mqtt broker to publish metric data to:
 ```bash
 glowplug start --redis redis://localhost:6379/0 --publish mqtt://localhost:1883
 ```
