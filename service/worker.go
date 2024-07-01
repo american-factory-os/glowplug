@@ -43,7 +43,6 @@ type worker struct {
 	size          int
 	messages      chan Message
 	results       chan Result
-	maxWorker     int
 	rdb           redis.UniversalClient
 	publishBroker *mqtt.Client
 	total         uint64
@@ -350,7 +349,6 @@ func (w *worker) Capacity() (current int, size int) {
 func NewWorker(logger *log.Logger, rdb *redis.UniversalClient, publishBroker *mqtt.Client) (Worker, error) {
 
 	size := runtime.NumCPU() * 100
-	maxWorker := runtime.NumCPU()
 
 	state := atomic.Uint32{}
 	state.Store(STATE_STOPPED)
@@ -361,7 +359,6 @@ func NewWorker(logger *log.Logger, rdb *redis.UniversalClient, publishBroker *mq
 		size:          size,
 		messages:      make(chan Message, size),
 		results:       make(chan Result, size),
-		maxWorker:     maxWorker,
 		rdb:           *rdb,
 		publishBroker: publishBroker,
 		seen:          make(map[string]bool),

@@ -69,6 +69,11 @@ func topicFromSparkplugMetric(topic sparkplug.Topic, metric *sparkplug.Payload_M
 
 // brokerClientFromURL returns a mqtt.Client from a given URL
 func brokerClientFromURL(rawURL string, handler *mqtt.MessageHandler) (mqtt.Client, error) {
+
+	if _, err := validateMQTTURL(rawURL); err != nil {
+		return nil, err
+	}
+
 	randClientID := fmt.Sprintf("glowplug-%d", time.Now().UnixNano())
 	mqttOpts := mqtt.NewClientOptions().AddBroker(rawURL).SetClientID(randClientID)
 	mqttOpts.SetKeepAlive(2 * time.Second)
