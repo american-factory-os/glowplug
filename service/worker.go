@@ -2,12 +2,12 @@ package service
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
 	"runtime"
 	"strings"
+	"sync"
 	"sync/atomic"
 
 	"github.com/american-factory-os/glowplug/sparkplug"
@@ -47,7 +47,7 @@ type worker struct {
 	publishBroker *mqtt.Client
 	total         uint64
 	errors        uint64
-	seen          map[string]bool
+	seen          sync.Map
 }
 
 func (w *worker) Stop() {
@@ -83,152 +83,69 @@ func (w *worker) processResult(result Result) error {
 		return nil
 	}
 
-	switch result.topic.Command {
-	case sparkplug.NBIRTH:
-		fallthrough
-	case sparkplug.NDATA:
-		fallthrough
-	case sparkplug.DBIRTH:
-		fallthrough
-	case sparkplug.DDATA:
-		for _, metric := range result.payload.Metrics {
-			key := keyFromSparkplugMetric(*result.topic, metric)
+	// process each metric in the payload
+	for _, metric := range result.payload.Metrics {
+		if len(metric.Name) == 0 {
+			return fmt.Errorf("empty metric name")
+		}
 
-			var value interface{} = nil
+		// convert sparkplug datatype to json type
+		jsonType, err := CoerceSparkplugDatatype(metric.Datatype, metric)
+		if err != nil {
+			return err
+		}
 
-			switch metric.Datatype {
-			case uint32(sparkplug.DataType_Float):
-				value = metric.GetFloatValue()
-			case uint32(sparkplug.DataType_Double):
-				value = metric.GetDoubleValue()
-			case uint32(sparkplug.DataType_Int8):
-				fallthrough
-			case uint32(sparkplug.DataType_Int16):
-				fallthrough
-			case uint32(sparkplug.DataType_Int32):
-				fallthrough
-			case uint32(sparkplug.DataType_Int64):
-				fallthrough
-			case uint32(sparkplug.DataType_UInt8):
-				fallthrough
-			case uint32(sparkplug.DataType_UInt16):
-				fallthrough
-			case uint32(sparkplug.DataType_UInt32):
-				fallthrough
-			case uint32(sparkplug.DataType_UInt64):
-				value = metric.GetIntValue()
-			case uint32(sparkplug.DataType_Boolean):
-				value = metric.GetBooleanValue()
-			case uint32(sparkplug.DataType_String):
-				value = metric.GetStringValue()
-			case uint32(sparkplug.DataType_DateTime):
-				// Date time value as uint64 value representing milliseconds since epoch (Jan 1, 1970)
-				value = metric.GetIntValue()
-			case uint32(sparkplug.DataType_Text):
-				value = metric.GetStringValue()
-			case uint32(sparkplug.DataType_UUID):
-				value = metric.GetStringValue()
-			case uint32(sparkplug.DataType_DataSet):
-				value = metric.GetStringValue()
-			case uint32(sparkplug.DataType_Bytes):
-				value = metric.GetBytesValue()
-			case uint32(sparkplug.DataType_File):
-				value = metric.GetBytesValue()
-			case uint32(sparkplug.DataType_Template):
-				value = metric.GetBytesValue()
-			case uint32(sparkplug.DataType_PropertySet):
-				fallthrough
-			case uint32(sparkplug.DataType_PropertySetList):
-				fallthrough
-			case uint32(sparkplug.DataType_Unknown):
-				fallthrough
-			case uint32(sparkplug.DataType_Int8Array):
-				fallthrough
-			case uint32(sparkplug.DataType_Int16Array):
-				fallthrough
-			case uint32(sparkplug.DataType_Int32Array):
-				fallthrough
-			case uint32(sparkplug.DataType_Int64Array):
-				fallthrough
-			case uint32(sparkplug.DataType_UInt8Array):
-				fallthrough
-			case uint32(sparkplug.DataType_UInt16Array):
-				fallthrough
-			case uint32(sparkplug.DataType_UInt32Array):
-				fallthrough
-			case uint32(sparkplug.DataType_UInt64Array):
-				fallthrough
-			case uint32(sparkplug.DataType_FloatArray):
-				fallthrough
-			case uint32(sparkplug.DataType_DoubleArray):
-				fallthrough
-			case uint32(sparkplug.DataType_BooleanArray):
-				fallthrough
-			case uint32(sparkplug.DataType_StringArray):
-				fallthrough
-			case uint32(sparkplug.DataType_DateTimeArray):
-				// All array types use the bytes_value field of the Metric value field. They are simply little-endian packed byte arrays.
-				value = metric.GetBytesValue()
-			default:
-				w.logger.Println("unknown datatype value", metric.Datatype)
-			}
+		// redis key for the metric
+		key := keyFromSparkplugMetric(*result.topic, metric)
 
-			// json encode the value
-			if bytes, err := json.Marshal(value); err != nil {
+		// report new metric seen
+		typeName := sparkplug.DataType_name[int32(metric.Datatype)]
+		_, seen := w.seen.Load(key)
+		if !seen {
+			w.seen.Store(key, true)
+			w.logger.Println("new metric encountered", metric.Name, typeName, jsonType)
+		}
+
+		// pipeline redis commands
+		if w.rdb != nil {
+			rdb := *w.rdb
+			if cmds, err := rdb.Pipelined(context.TODO(), func(pipeliner redis.Pipeliner) error {
+
+				if !seen {
+					// save human readable metric type in a redis hash
+					pipeliner.HSet(context.TODO(), HASH_METRIC_TYPES, key, typeName)
+				}
+
+				// store the metric value in a redis set
+				pipeliner.Set(context.TODO(), key, jsonType, 0)
+
+				// publish metric value to redis channel
+				pipeliner.Publish(context.TODO(), key, jsonType)
+
+				return nil
+			}); err != nil {
 				return err
 			} else {
-				value = string(bytes)
-			}
-
-			// report new metric seen
-			typeName := sparkplug.DataType_name[int32(metric.Datatype)]
-			_, seen := w.seen[key]
-			if !seen {
-				w.seen[key] = true
-				w.logger.Println("new metric encountered", key, typeName, value)
-			}
-
-			// pipeline redis commands
-			if w.rdb != nil {
-				rdb := *w.rdb
-				if cmds, err := rdb.Pipelined(context.TODO(), func(pipeliner redis.Pipeliner) error {
-
-					if !seen {
-						// save human readable metric type in a redis hash
-						pipeliner.HSet(context.TODO(), HASH_METRIC_TYPES, key, typeName)
-					}
-
-					// store the metric value in a redis set
-					pipeliner.Set(context.TODO(), key, value, 0)
-
-					// publish metric value to redis channel
-					pipeliner.Publish(context.TODO(), key, value)
-
-					return nil
-				}); err != nil {
-					return err
-				} else {
-					for _, cmd := range cmds {
-						if cmd.Err() != nil && cmd.Err() != redis.Nil {
-							return fmt.Errorf("redis cmd error %w", cmd.Err())
-						}
+				for _, cmd := range cmds {
+					if cmd.Err() != nil && cmd.Err() != redis.Nil {
+						return fmt.Errorf("redis cmd error %w", cmd.Err())
 					}
 				}
 			}
+		}
 
-			if w.publishBroker != nil {
-				// publish metric value to mqtt
-				go func(t *sparkplug.Topic, m *sparkplug.Payload_Metric) {
-					topic := topicFromSparkplugMetric(*t, m)
-					if publishBroker, err := w.getPublishBroker(); err == nil {
-						if token := publishBroker.Publish(topic, 0, false, value); token.Wait() && token.Error() != nil {
-							log.Println("unable to publish to mqtt", token.Error())
-						}
+		if w.publishBroker != nil {
+
+			// publish metric value to mqtt
+			go func(topic *sparkplug.Topic, metric *sparkplug.Payload_Metric, worker *worker) {
+				metricTopic := topicFromSparkplugMetric(*topic, metric)
+				if publishBroker, err := worker.getPublishBroker(); err == nil {
+					if token := publishBroker.Publish(metricTopic, 0, false, jsonType.Bytes()); token.Wait() && token.Error() != nil {
+						log.Println("unable to publish to mqtt", metricTopic, token.Error())
 					}
+				}
 
-				}(result.topic, metric)
-			}
-
+			}(result.topic, metric, w)
 		}
 	}
 
@@ -363,6 +280,6 @@ func NewWorker(logger *log.Logger, rdb *redis.UniversalClient, publishBroker *mq
 		results:       make(chan Result, size),
 		rdb:           rdb,
 		publishBroker: publishBroker,
-		seen:          make(map[string]bool),
+		seen:          sync.Map{},
 	}, nil
 }
