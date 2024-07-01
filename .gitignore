@@ -23,6 +23,10 @@
 
 !.github/workflows/*
 
+!Dockerfile
+
+!*.md
+
 # !Makefile
 
 # ...even if they are in subdirectories
