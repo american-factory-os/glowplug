@@ -1,6 +1,3 @@
-/*
-Copyright © 2024 NAME HERE <EMAIL ADDRESS>
-*/
 package cmd
 
 import (
@@ -11,6 +8,7 @@ import (
 	"time"
 
 	"github.com/american-factory-os/glowplug/service"
+	"github.com/american-factory-os/glowplug/version"
 	"github.com/spf13/cobra"
 )
 
@@ -26,6 +24,9 @@ readable data to MQTT.`,
 	Run: func(cmd *cobra.Command, args []string) {
 
 		logger := service.NewLogger()
+		if len(version.Version) > 0 || len(version.Revision) > 0 {
+			logger.Printf("glowplug version %s %s", version.Version, version.Revision)
+		}
 
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()

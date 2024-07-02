@@ -33,8 +33,23 @@ package main
 
 import (
 	"github.com/american-factory-os/glowplug/cmd"
+	"github.com/american-factory-os/glowplug/version"
+)
+
+var (
+	Version  string
+	Revision string
 )
 
 func main() {
+
+	if len(Version) > 0 {
+		version.SetVersion(Version)
+	}
+
+	if len(Revision) > 0 {
+		version.SetRevision(Revision)
+	}
+
 	cmd.Execute()
 }
