@@ -20,22 +20,31 @@ type Message struct {
 	payload []byte
 }
 
-func validateMQTTURL(rawURL string) (bool, error) {
+// The URL format should be scheme://host:port Where "scheme" is one of:
+// "mqtt", "tcp", "ssl", or "ws", "host" is the ip-address (or hostname)
+// and "port" is the port on which the broker is accepting connections
+// Default values for hostname is "127.0.0.1", for schema is "tcp://".
+// An example broker URI would look like: tcp://foobar.com:1883
+func validateBrokerURI(rawURL string) (bool, error) {
+	if rawURL == "" {
+		return false, fmt.Errorf("broker URL is empty")
+	}
+
 	u, err := url.Parse(rawURL)
 	if err != nil {
 		return false, err
 	}
 
-	if u.Scheme != "mqtt" && u.Scheme != "ws" && u.Scheme != "wss" {
-		return false, fmt.Errorf("invalid scheme, expecting ws, wss, or mqtt")
+	if u.Scheme != "tcp" && u.Scheme != "ssl" && u.Scheme != "ws" && u.Scheme != "mqtt" {
+		return false, fmt.Errorf("invalid scheme: %s", u.Scheme)
 	}
 
-	if len(u.Port()) < 2 {
-		return false, fmt.Errorf("port too short")
+	if len(u.Host)-len(u.Port()) < 4 {
+		return false, fmt.Errorf("invalid host")
 	}
 
-	if len(u.Host) <= 6 {
-		return false, fmt.Errorf("host too short")
+	if u.Port() == "" {
+		return false, fmt.Errorf("invalid port")
 	}
 
 	return true, nil
@@ -70,7 +79,7 @@ func topicFromSparkplugMetric(topic sparkplug.Topic, metric *sparkplug.Payload_M
 // brokerClientFromURL returns a mqtt.Client from a given URL
 func brokerClientFromURL(rawURL string, handler *mqtt.MessageHandler) (mqtt.Client, error) {
 
-	if _, err := validateMQTTURL(rawURL); err != nil {
+	if _, err := validateBrokerURI(rawURL); err != nil {
 		return nil, err
 	}
 

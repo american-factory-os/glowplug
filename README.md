@@ -35,7 +35,7 @@ glowplug start --redis redis://localhost:6379/0 --publish mqtt://localhost:1883
 * Human-readable: Optionally publish Sparkplug metrics to human-readable MQTT topics.
 
 ## MQTT
-The flag `--mqtt` contains the MQTT broker URL (e.g. [Mosquitto](https://github.com/eclipse/mosquitto)) to connect to and listen for Sparkplug B messages. When providing a MQTT url, it should start with "ws", "wss", or "mqtt".
+The flag `--mqtt` contains the MQTT broker glowplug will listen for Sparkplug messages. The value defaults to `mqtt://localhost:1883` (commonly used for [mosquitto](https://github.com/eclipse/mosquitto)).
 
 The flag `--publish` will publish each metrics to a unique topic in a UNS (more below on this). **Note:** this flag will generate a new topic in your broker for each Sparkplug metric published. If you have 100k's of tags there may be a compute impact.
 

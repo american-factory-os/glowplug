@@ -1,11 +1,9 @@
-package service
+package sparkplug
 
 import (
 	"encoding/json"
 	"fmt"
 	"strconv"
-
-	"github.com/american-factory-os/glowplug/sparkplug"
 )
 
 // JsonType is an interface that represents either a number, string, boolean, or array
@@ -180,12 +178,22 @@ func newJsonBool(b bool) JsonType {
 	}
 }
 
-// CoerceSparkplugDatatype will convert a sparkplug datatype to a JSON type,
+// MetricValueToJsonType will convert a sparkplug datatype to a JSON type,
 // one of: number, string, boolean, array
-func CoerceSparkplugDatatype(datatype uint32, metric *sparkplug.Payload_Metric) (JsonType, error) {
+func MetricValueToJsonType(metric *Payload_Metric) (JsonType, error) {
 
-	// cast to int32 because we know the datatype is valid per sparkplug.proto
-	name, ok := sparkplug.DataType_name[int32(datatype)]
+	if metric == nil {
+		return nil, fmt.Errorf("nil metric")
+	}
+
+	if metric.Value == nil {
+		return nil, fmt.Errorf("nil value")
+	}
+
+	// cast to int32 because we know the datatype is valid per proto
+	datatype := int32(metric.Datatype)
+
+	name, ok := DataType_name[datatype]
 	if !ok {
 		return nil, fmt.Errorf("unknown sparkplug datatype %d", datatype)
 	}
@@ -262,7 +270,7 @@ func CoerceSparkplugDatatype(datatype uint32, metric *sparkplug.Payload_Metric) 
 	case "Unknown":
 		fallthrough
 	default:
-		return nil, fmt.Errorf("unsupported sparkplug datatype %d", datatype)
+		return nil, fmt.Errorf("sparkplug datatype %d is currently unsupported", datatype)
 	}
 
 }
