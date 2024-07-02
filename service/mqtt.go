@@ -8,11 +8,13 @@ import (
 
 	"github.com/american-factory-os/glowplug/sparkplug"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
+	"github.com/gopcua/opcua/ua"
 )
 
 const (
-	topicDelimiter = "/"
-	topicPrefix    = "glowplug"
+	topicDelimiter   = "/"
+	topicPrefix      = "glowplug"
+	topicPrefixOpcua = "opcua"
 )
 
 type Message struct {
@@ -74,6 +76,47 @@ func topicFromSparkplugMetric(topic sparkplug.Topic, metric *sparkplug.Payload_M
 	b.WriteString(normalizeTopicName(metric.Name))
 
 	return normalizeTopicName(b.String())
+}
+
+// topicFromUaNode returns a topic for a given UA Node
+func topicFromUaNode(productURI string, nodeID *ua.NodeID) (string, error) {
+
+	var b strings.Builder
+	b.WriteString(topicPrefix)
+	b.WriteString(topicDelimiter)
+
+	b.WriteString(topicPrefixOpcua)
+	b.WriteString(topicDelimiter)
+
+	b.WriteString(productURI)
+	b.WriteString(topicDelimiter)
+
+	b.WriteString(fmt.Sprint(nodeID.Namespace()))
+	b.WriteString(keyDelimiter)
+
+	// ns=2;s=Demo.Static.Scalar.UInt32
+	switch nodeID.Type() {
+	case ua.NodeIDTypeTwoByte:
+		fallthrough
+	case ua.NodeIDTypeFourByte:
+		fallthrough
+	case ua.NodeIDTypeNumeric:
+		b.WriteString("i")
+		b.WriteString(topicDelimiter)
+		b.WriteString(fmt.Sprint(nodeID.IntID()))
+	case ua.NodeIDTypeString:
+		fallthrough
+	case ua.NodeIDTypeGUID:
+		fallthrough
+	case ua.NodeIDTypeByteString:
+		b.WriteString("s")
+		b.WriteString(topicDelimiter)
+		b.WriteString(nodeID.StringID())
+	default:
+		return "", fmt.Errorf("unsupported nodeID type: %s", nodeID.Type().String())
+	}
+
+	return normalizeTopicName(b.String()), nil
 }
 
 // brokerClientFromURL returns a mqtt.Client from a given URL

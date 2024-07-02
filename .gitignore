@@ -27,6 +27,8 @@
 
 *.md
 
+!cert/*
+
 # !Makefile
 
 # ...even if they are in subdirectories

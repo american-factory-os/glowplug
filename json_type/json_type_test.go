@@ -1,4 +1,4 @@
-package sparkplug
+package json_type
 
 import (
 	"fmt"

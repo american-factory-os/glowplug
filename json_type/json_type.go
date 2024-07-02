@@ -1,9 +1,13 @@
-package sparkplug
+package json_type
 
 import (
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"strconv"
+
+	"github.com/american-factory-os/glowplug/sparkplug"
+	"github.com/gopcua/opcua/ua"
 )
 
 // JsonType is an interface that represents either a number, string, boolean, or array
@@ -180,7 +184,7 @@ func newJsonBool(b bool) JsonType {
 
 // MetricValueToJsonType will convert a sparkplug datatype to a JSON type,
 // one of: number, string, boolean, array
-func MetricValueToJsonType(metric *Payload_Metric) (JsonType, error) {
+func MetricValueToJsonType(metric *sparkplug.Payload_Metric) (JsonType, error) {
 
 	if metric == nil {
 		return nil, fmt.Errorf("nil metric")
@@ -193,7 +197,7 @@ func MetricValueToJsonType(metric *Payload_Metric) (JsonType, error) {
 	// cast to int32 because we know the datatype is valid per proto
 	datatype := int32(metric.Datatype)
 
-	name, ok := DataType_name[datatype]
+	name, ok := sparkplug.DataType_name[datatype]
 	if !ok {
 		return nil, fmt.Errorf("unknown sparkplug datatype %d", datatype)
 	}
@@ -271,6 +275,83 @@ func MetricValueToJsonType(metric *Payload_Metric) (JsonType, error) {
 		fallthrough
 	default:
 		return nil, fmt.Errorf("sparkplug datatype %d is currently unsupported", datatype)
+	}
+
+}
+
+// NodeValueToJsonType will convert a OPC UA Node type to a JSON type,
+// one of: number, string, boolean, array
+func NodeValueToJsonType(variant *ua.Variant) (JsonType, error) {
+
+	if variant == nil {
+		return nil, fmt.Errorf("nil variant")
+	}
+
+	if variant.Value() == nil {
+		return nil, fmt.Errorf("nil value")
+	}
+
+	datatype := variant.Type()
+
+	fail := func(v *ua.Variant) (JsonType, error) {
+		return nil, fmt.Errorf("ua datatype %d is currently unsupported, reflected type is %v", v.Type(), reflect.TypeOf(v.Value()))
+	}
+
+	switch datatype {
+	case ua.TypeIDNull:
+		return fail(variant)
+	case ua.TypeIDBoolean:
+		return newJsonBool(variant.Bool()), nil
+	case ua.TypeIDSByte:
+		return fail(variant)
+	case ua.TypeIDByte:
+		return fail(variant)
+	case ua.TypeIDInt16:
+		fallthrough
+	case ua.TypeIDInt32:
+		fallthrough
+	case ua.TypeIDInt64:
+		return newJsonInt64(int64(variant.Int())), nil
+	case ua.TypeIDUint16:
+		fallthrough
+	case ua.TypeIDUint32:
+		fallthrough
+	case ua.TypeIDUint64:
+		return newJsonUInt64(uint64(variant.Uint())), nil
+	case ua.TypeIDFloat:
+		return fail(variant)
+	case ua.TypeIDDouble:
+		return newJsonFloat64(variant.Float()), nil
+	case ua.TypeIDString:
+		return newJsonString(variant.String()), nil
+	case ua.TypeIDDateTime:
+		return fail(variant)
+	case ua.TypeIDGUID:
+		return newJsonString(variant.GUID().String()), nil
+	case ua.TypeIDByteString:
+		return fail(variant)
+	case ua.TypeIDXMLElement:
+		return fail(variant)
+	case ua.TypeIDNodeID:
+		return fail(variant)
+	case ua.TypeIDExpandedNodeID:
+		return fail(variant)
+	case ua.TypeIDStatusCode:
+		return fail(variant)
+	case ua.TypeIDQualifiedName:
+		return fail(variant)
+	case ua.TypeIDLocalizedText:
+		return newJsonString(variant.LocalizedText().Text), nil
+	case ua.TypeIDExtensionObject:
+		return fail(variant)
+	case ua.TypeIDDataValue:
+		return fail(variant)
+	case ua.TypeIDVariant:
+		return fail(variant)
+	case ua.TypeIDDiagnosticInfo:
+		return fail(variant)
+	default:
+		return nil, fmt.Errorf("ua datatype %d is currently unsupported, reflected type is %v", datatype, reflect.TypeOf(variant.Value()))
 	}
 
 }

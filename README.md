@@ -1,6 +1,8 @@
 # Glowplug
 **Glowplug** makes it easier to work with Sparkplug B data over MQTT for Industrial IoT (IIoT) applications.
 
+This project was created as part of a learning journey into industrial IIoT.
+
 ## Why Glowplug?
 If you're new to IIoT or industrial automation, Sparkplug data can be difficult to work with, and it's binary encoding is not human readable. Glowplug is designed to demystify Sparkplug data, by making every metric value more accessible and human readable. 
 
@@ -45,6 +47,7 @@ glowplug start --publish mqtt://localhost:1883
 ```
 View your MQTT broker directly with [MQTT Explorer](https://mqtt-explorer.com/).
 
+
 ## Redis
 If the flag `--redis` contains a valid redis URL, glowplug will store all Sparkplug metrics from birth and data messages in a set, and publish them to a channel of the same key as the set.
 
@@ -80,6 +83,31 @@ will be mapped as follows:
     ```txt
     glowplug/Plant1/Area3/Line4/Cell2/Heater/TempSensor/Current/Celsius
     ```
+
+### Experimental OPC UA Support
+
+Glowplug also has *experimental* support for reading OPC UA data and publishing it to redis using the `opcua` command. Run `glowplug opcua --help` for more information on flags, including TLS use. This may, or may not work, and will depend on the server you are using. Instructions on creating a certificate using openssl [are here](cert/README.md).
+
+### Example Usage
+```bash
+glowplug opcua --endpoint opc.tcp://localhost:53530/OPCUA/SimulationServer --nodes '["ns=3;i=1005"]' --mqtt mqtt://localhost:1883 --redis redis://localhost:6379/0
+```
+
+In the above example the namespace `ns=3;i=1005` would be converted to a redis key based on the server URI and the node ID as follows:
+
+- **Redis SET key**:
+    ```txt
+    glowplug:opcua:urn:prosysopc.com:opcua:simulationserver:3:i:1005
+    ```
+- **Redis channel key**:
+    ```txt
+    glowplug:opcua:urn:prosysopc.com:opcua:simulationserver:3:i:1005
+    ```    
+- **MQTT Topic**:
+    ```txt
+    glowplug/opcua/urn/prosysopc.com/OPCUA/SimulationServer/3/i/1005
+    ```
+
 
 ## Sparkplug Go Module
 
