@@ -1,4 +1,4 @@
-package service
+package sparkplug
 
 import (
 	"fmt"
