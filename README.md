@@ -11,19 +11,19 @@ If you want individual metrics exposed in a UNS when they update, Glowplug can o
 ## Quickstart
 
 ```bash
-docker run --network="host" aphexddb/glowplug:latest start
+docker run --network="host" aphexddb/glowplug:latest listen --broker mqtt://localhost:1883
 ```
 
 Or, if you have Go installed, install glowplug from the command line:
 
 ```bash
 go install github.com/american-factory-os/glowplug@latest
-glowplug start
+glowplug listen --broker mqtt://localhost:1883
 ```
 
 Next, add a redis url, and the url of a mqtt broker to publish metric data to:
 ```bash
-glowplug start --redis redis://localhost:6379/0 --publish mqtt://localhost:1883
+glowplug listen --broker mqtt://localhost:1883 --redis redis://localhost:6379/0 --publish mqtt://localhost:1883
 ```
 
 ## Features
@@ -35,28 +35,29 @@ glowplug start --redis redis://localhost:6379/0 --publish mqtt://localhost:1883
 * Human-readable: Optionally publish Sparkplug metrics to human-readable MQTT topics.
 
 ## MQTT
-The flag `--mqtt` contains the MQTT broker glowplug will listen for Sparkplug messages. The value defaults to `mqtt://localhost:1883` (commonly used for [mosquitto](https://github.com/eclipse/mosquitto)).
-
-The flag `--publish` will publish each metrics to a unique topic in a UNS (more below on this). **Note:** this flag will generate a new topic in your broker for each Sparkplug metric published. If you have 100k's of tags there may be a compute impact.
+* The flag `--broker` contains the MQTT broker glowplug will listen for Sparkplug messages.
+  * The value defaults to `mqtt://localhost:1883` (commonly used for [mosquitto](https://github.com/eclipse/mosquitto)).
+* The flag `--publish` will publish each metrics to a unique topic in a UNS (more below on this).   
+  * **Note:** this flag will generate a new topic in your broker for each Sparkplug metric published. If you have 100k's of tags there may be a compute impact.
 
 ### Example Usage
 ```bash
-glowplug start --publish mqtt://localhost:1883
+glowplug listen --broker mqtt://localhost:1883 --publish mqtt://localhost:1883
 ```
 View your MQTT broker directly with [MQTT Explorer](https://mqtt-explorer.com/).
 
 ## Redis
-If the flag `--redis` contains a valid redis URL, glowplug will store all Sparkplug metrics from birth and data messages in a set, and publish them to a channel of the same key as the set.
+* The flag `--redis` will specify the redis server for glowplug to store all Sparkplug metrics from birth and data messages in a [SET](https://redis.io/docs/latest/commands/set/), and publish them to a [channel](https://redis.io/docs/latest/commands/pubsub-channels/) of the same key as the set.
 
 ### Example Usage
 
 ```bash
-glowplug start --redis redis://localhost:6379
+glowplug listen --broker mqtt://localhost:1883 --redis redis://localhost:6379
 ```
 
 You can explore glowplug data in Redis with [Redis Insight](https://redis.io/insight/). All data is prefixed with the value `glowplug`, so you can search for `glowplug:*` to see all the keys. Glowplug also stores all the metric data types it has seen in the hash `glowplug:metric_types`. 
 
-If you are using [Node Red](https://nodered.org/), the [node-red-contrib-redis](https://flows.nodered.org/node/node-red-contrib-redis) module makes it easy to consume a redis channel containing Sparkplug metric data using the SUBSCRIBE method.
+If you are using [Node Red](https://nodered.org/), the [node-red-contrib-redis](https://flows.nodered.org/node/node-red-contrib-redis) module makes it easy to consume a redis channel containing Sparkplug metric data using [SUBSCRIBE](https://redis.io/docs/latest/commands/subscribe/).
 
 <img src="example/redis-in-node-red.png" />
 

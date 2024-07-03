@@ -12,11 +12,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// startCmd represents the start command
-var startCmd = &cobra.Command{
-	Use:   "start",
-	Short: "Start glowplug",
-	Long: `This command will start the glowplug service. 
+// listenCmd represents the start command
+var listenCmd = &cobra.Command{
+	Use:   "listen",
+	Short: "Listen for Sparkplug messages",
+	Long: `This command will start glowplug. 
 
 It will read Sparkplug B data over MQTT and optionally publish human
 readable data to MQTT.`,
@@ -35,7 +35,7 @@ readable data to MQTT.`,
 		signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
 
 		svc, err := service.New(logger, service.Opts{
-			MQTTBrokerURL:    cmd.Flag("mqtt").Value.String(),
+			MQTTBrokerURL:    cmd.Flag("broker").Value.String(),
 			RedisURL:         cmd.Flag("redis").Value.String(),
 			PublishBrokerURL: cmd.Flag("publish").Value.String(),
 		})
@@ -70,8 +70,8 @@ readable data to MQTT.`,
 }
 
 func init() {
-	rootCmd.AddCommand(startCmd)
-	startCmd.PersistentFlags().StringP("mqtt", "m", "mqtt://localhost:1883", "MQTT broker URL to listen for Sparkplug messages")
-	startCmd.PersistentFlags().StringP("publish", "p", "", "Publish human readable Sparkplug metrics values to this MQTT broker, e.g. mqtt://localhost:1883")
-	startCmd.PersistentFlags().StringP("redis", "r", "", "Redis URL to store Sparkplug data, e.g. redis://localhost:6379/0")
+	rootCmd.AddCommand(listenCmd)
+	listenCmd.PersistentFlags().StringP("broker", "b", "mqtt://localhost:1883", "MQTT broker URL to listen for Sparkplug messages")
+	listenCmd.PersistentFlags().StringP("publish", "p", "", "Publish human readable Sparkplug metrics values to this MQTT broker, e.g. mqtt://localhost:1883")
+	listenCmd.PersistentFlags().StringP("redis", "r", "", "Redis URL to store Sparkplug data, e.g. redis://localhost:6379/0")
 }
