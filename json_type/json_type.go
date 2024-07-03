@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
-	"strconv"
 
 	"github.com/american-factory-os/glowplug/sparkplug"
 	"github.com/gopcua/opcua/ua"
@@ -68,40 +67,19 @@ func (x *jsonArray) Bytes() []byte {
 }
 
 type jsonNumber struct {
-	i64 *int64
-	u64 *uint64
-	f32 *float32
-	f64 *float64
+	n interface{}
 }
 
 func (x *jsonNumber) MarshalJSON() ([]byte, error) {
-	if x.i64 != nil {
-		return json.Marshal(*x.i64)
-	}
-	if x.u64 != nil {
-		return json.Marshal(*x.u64)
-	}
-	if x.f32 != nil {
-		return json.Marshal(*x.f32)
-	}
-	if x.f64 != nil {
-		return json.Marshal(*x.f64)
+	if x.n != nil {
+		return json.Marshal(x.n)
 	}
 	return nil, fmt.Errorf("no value to marshal")
 }
 
 func (x *jsonNumber) MarshalBinary() ([]byte, error) {
-	if x.i64 != nil {
-		return json.Marshal(*x.i64)
-	}
-	if x.u64 != nil {
-		return json.Marshal(*x.u64)
-	}
-	if x.f32 != nil {
-		return json.Marshal(*x.f32)
-	}
-	if x.f64 != nil {
-		return json.Marshal(*x.f64)
+	if x.n != nil {
+		return json.Marshal(x.n)
 	}
 	return nil, fmt.Errorf("no value to marshal")
 }
@@ -114,19 +92,21 @@ func (x *jsonNumber) String() string {
 }
 
 func (x *jsonNumber) Bytes() []byte {
-	if x.i64 != nil {
-		return []byte(strconv.FormatInt(*x.i64, 10))
+	if x == nil {
+		return nil
 	}
-	if x.u64 != nil {
-		return []byte(strconv.FormatUint(*x.u64, 10))
+
+	// in the future, think about how to marshal the number without using the json package which uses exponents, ex:
+	// var buf [8]byte
+	// binary.BigEndian.PutUint64(buf[:], math.Float64bits(f))
+
+	b, err := json.Marshal(x.n)
+	if err != nil {
+		panic(err)
 	}
-	if x.f32 != nil {
-		return []byte(strconv.FormatFloat(float64(*x.f32), 'f', -1, 32))
-	}
-	if x.f64 != nil {
-		return []byte(strconv.FormatFloat(*x.f64, 'f', -1, 64))
-	}
-	return nil
+
+	return b
+
 }
 
 type jsonString struct {
@@ -195,27 +175,9 @@ func (x *jsonBool) Bytes() []byte {
 	return []byte("false")
 }
 
-func newJsonInt64(v int64) JsonType {
+func newJsonNumber[T uint64 | uint32 | uint16 | uint8 | uint | int64 | int32 | int16 | int8 | int | float64 | float32](v T) JsonType {
 	return &jsonNumber{
-		i64: &v,
-	}
-}
-
-func newJsonUInt64(v uint64) JsonType {
-	return &jsonNumber{
-		u64: &v,
-	}
-}
-
-func newJsonFloat32(v float32) JsonType {
-	return &jsonNumber{
-		f32: &v,
-	}
-}
-
-func newJsonFloat64(v float64) JsonType {
-	return &jsonNumber{
-		f64: &v,
+		n: v,
 	}
 }
 
@@ -272,13 +234,13 @@ func MetricValueToJsonType(metric *sparkplug.Payload_Metric) (JsonType, error) {
 
 	switch name {
 	case "Int8":
-		fallthrough
+		return newJsonNumber(int8(metric.GetIntValue())), nil
 	case "Int16":
-		fallthrough
+		return newJsonNumber(int16(metric.GetIntValue())), nil
 	case "Int32":
-		fallthrough
+		return newJsonNumber(int32(metric.GetIntValue())), nil
 	case "Int64":
-		return newJsonInt64(int64(metric.GetIntValue())), nil
+		return newJsonNumber(int64(metric.GetIntValue())), nil
 	case "UInt8":
 		fallthrough
 	case "UInt16":
@@ -286,15 +248,15 @@ func MetricValueToJsonType(metric *sparkplug.Payload_Metric) (JsonType, error) {
 	case "UInt32":
 		fallthrough
 	case "UInt64":
-		return newJsonUInt64(metric.GetLongValue()), nil
+		return newJsonNumber(uint64(metric.GetLongValue())), nil
 	case "Float":
-		return newJsonFloat32(metric.GetFloatValue()), nil
+		return newJsonNumber(float32(metric.GetFloatValue())), nil
 	case "Double":
-		return newJsonFloat64(metric.GetDoubleValue()), nil
+		return newJsonNumber(float64(metric.GetDoubleValue())), nil
 	case "Boolean":
 		return newJsonBool(metric.GetBooleanValue()), nil
 	case "DateTime":
-		return newJsonInt64(int64(metric.GetIntValue())), nil
+		return newJsonNumber(int64(metric.GetIntValue())), nil
 	case "String":
 		fallthrough
 	case "Text":
@@ -379,17 +341,17 @@ func NodeValueToJsonType(variant *ua.Variant) (JsonType, error) {
 	case ua.TypeIDInt32:
 		fallthrough
 	case ua.TypeIDInt64:
-		return newJsonInt64(int64(variant.Int())), nil
+		return newJsonNumber(int64(variant.Int())), nil
 	case ua.TypeIDUint16:
 		fallthrough
 	case ua.TypeIDUint32:
 		fallthrough
 	case ua.TypeIDUint64:
-		return newJsonUInt64(uint64(variant.Uint())), nil
+		return newJsonNumber(uint64(variant.Uint())), nil
 	case ua.TypeIDFloat:
 		return fail(variant)
 	case ua.TypeIDDouble:
-		return newJsonFloat64(variant.Float()), nil
+		return newJsonNumber(variant.Float()), nil
 	case ua.TypeIDString:
 		return newJsonString(variant.String()), nil
 	case ua.TypeIDDateTime:

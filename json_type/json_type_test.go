@@ -3,49 +3,65 @@ package json_type
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
 func TestNewJsonNumber(t *testing.T) {
-	intValue := int64(42)
-	uintValue := uint64(42)
-	float32Value := float32(42.0)
-	float64Value := float64(42.0)
+	int8Value := int8(0)
+	int64Value := int64(math.MaxInt64)
+	uint64Value := uint64(math.MaxUint64)
+	float32Value := float32(math.MaxFloat32)
+	float64Value := float64(math.MaxFloat64)
 
-	jtInt := newJsonInt64(intValue)
-	assert.Equal(t, fmt.Sprint(intValue), jtInt.String())
-	assert.Equal(t, []byte(fmt.Sprint(intValue)), jtInt.Bytes())
+	t.Run("int8", func(t *testing.T) {
+		jtInt8 := newJsonNumber(int8Value)
+		assert.Equal(t, fmt.Sprint(int8Value), jtInt8.String())
+		assert.Equal(t, []byte(fmt.Sprint(int8Value)), jtInt8.Bytes())
+		jtInt8Bytes, intErr := jtInt8.MarshalJSON()
+		assert.Nil(t, intErr)
+		assert.Equal(t, fmt.Sprint(int8Value), string(jtInt8Bytes))
+	})
 
-	jtIntBytes, intErr := jtInt.MarshalJSON()
-	assert.Nil(t, intErr)
-	assert.Equal(t, fmt.Sprint(intValue), string(jtIntBytes))
+	t.Run("int64", func(t *testing.T) {
+		jtInt64 := newJsonNumber(int64Value)
+		assert.Equal(t, fmt.Sprint(int64Value), jtInt64.String())
+		assert.Equal(t, []byte(fmt.Sprint(int64Value)), jtInt64.Bytes())
+		jtIntBytes, intErr := jtInt64.MarshalJSON()
+		assert.Nil(t, intErr)
+		assert.Equal(t, fmt.Sprint(int64Value), string(jtIntBytes))
+	})
 
-	jtUint := newJsonUInt64(uintValue)
-	assert.Equal(t, fmt.Sprint(uintValue), jtUint.String())
-	assert.Equal(t, []byte(fmt.Sprint(uintValue)), jtUint.Bytes())
+	t.Run("uint64", func(t *testing.T) {
+		jtUint64 := newJsonNumber(uint64Value)
+		assert.Equal(t, fmt.Sprint(uint64Value), jtUint64.String())
+		assert.Equal(t, []byte(fmt.Sprint(uint64Value)), jtUint64.Bytes())
+		jtUintBytes, uintErr := jtUint64.MarshalJSON()
+		assert.Nil(t, uintErr)
+		assert.Equal(t, fmt.Sprint(uint64Value), string(jtUintBytes))
+	})
 
-	jtUintBytes, uintErr := jtUint.MarshalJSON()
-	assert.Nil(t, uintErr)
-	assert.Equal(t, fmt.Sprint(uintValue), string(jtUintBytes))
+	t.Run("float32", func(t *testing.T) {
+		expectedStr := "3.4028235e+38"
+		jtFloat32 := newJsonNumber(float32Value)
+		assert.Equal(t, expectedStr, jtFloat32.String())
+		assert.Equal(t, []byte(expectedStr), jtFloat32.Bytes())
+		jtFloat32Bytes, float32Err := jtFloat32.MarshalJSON()
+		assert.Nil(t, float32Err)
+		assert.Equal(t, expectedStr, string(jtFloat32Bytes))
+	})
 
-	jtFloat32 := newJsonFloat32(float32Value)
-	assert.Equal(t, fmt.Sprint(float32Value), jtFloat32.String())
-	assert.Equal(t, []byte(fmt.Sprint(float32Value)), jtFloat32.Bytes())
-
-	jtFloat32Bytes, float32Err := jtFloat32.MarshalJSON()
-	assert.Nil(t, float32Err)
-	assert.Equal(t, fmt.Sprint(float32Value), string(jtFloat32Bytes))
-
-	jtFloat64 := newJsonFloat64(float64Value)
-	assert.Equal(t, fmt.Sprint(float64Value), jtFloat64.String())
-	assert.Equal(t, []byte(fmt.Sprint(float64Value)), jtFloat64.Bytes())
-
-	jtFloat64Bytes, float64Err := jtFloat64.MarshalJSON()
-	assert.Nil(t, float64Err)
-	assert.Equal(t, fmt.Sprint(float64Value), string(jtFloat64Bytes))
-	assert.Equal(t, []byte(fmt.Sprint(float64Value)), jtFloat64.Bytes())
+	t.Run("float64", func(t *testing.T) {
+		expectedStr := "1.7976931348623157e+308"
+		jtFloat64 := newJsonNumber(float64Value)
+		assert.Equal(t, expectedStr, jtFloat64.String())
+		assert.Equal(t, []byte(expectedStr), jtFloat64.Bytes())
+		jtFloat64Bytes, float64Err := jtFloat64.MarshalJSON()
+		assert.Nil(t, float64Err)
+		assert.Equal(t, expectedStr, string(jtFloat64Bytes))
+	})
 }
 
 func TestNewJsonString(t *testing.T) {
