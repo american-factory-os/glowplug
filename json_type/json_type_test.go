@@ -123,3 +123,13 @@ func TestNewJsonArray(t *testing.T) {
 		assert.JSONEq(t, string(expectedBytes), string(jtBytes))
 	})
 }
+
+func TestNewJsonNil(t *testing.T) {
+	jt := newJsonNull()
+	assert.Equal(t, "", jt.String())
+	assert.Nil(t, jt.Bytes())
+
+	jtBytes, err := jt.MarshalJSON()
+	assert.Nil(t, err)
+	assert.Equal(t, "null", string(jtBytes))
+}

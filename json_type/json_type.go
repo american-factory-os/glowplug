@@ -22,6 +22,24 @@ type JsonType interface {
 	Bytes() []byte
 }
 
+type jsonNull struct{}
+
+func (x *jsonNull) MarshalJSON() ([]byte, error) {
+	return json.Marshal(nil)
+}
+
+func (x *jsonNull) MarshalBinary() ([]byte, error) {
+	return json.Marshal(nil)
+}
+
+func (x *jsonNull) String() string {
+	return ""
+}
+
+func (x *jsonNull) Bytes() []byte {
+	return nil
+}
+
 type jsonArray struct {
 	a []interface{}
 }
@@ -228,19 +246,20 @@ func newJsonArray[T uint64 | uint32 | uint16 | uint8 | uint | int64 | int32 | in
 	return &jsonArray{a: data}, nil
 }
 
+func newJsonNull() JsonType {
+	return &jsonNull{}
+}
+
 // MetricValueToJsonType will convert a sparkplug datatype to a JSON type,
 // one of: number, string, boolean, array
 func MetricValueToJsonType(metric *sparkplug.Payload_Metric) (JsonType, error) {
 
 	if metric == nil {
-		return nil, fmt.Errorf("nil metric")
+		return nil, fmt.Errorf("metric is nil, can't convert to JsonType")
 	}
 
 	if metric.Value == nil {
-		if metric.Properties != nil {
-			return nil, ErrPayloadMetricNilHasProperties
-		}
-		return nil, ErrPayloadMetricNil
+		return newJsonNull(), nil
 	}
 
 	// cast to int32 because we know the datatype is valid per proto
