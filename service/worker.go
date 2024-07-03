@@ -90,7 +90,7 @@ func (w *worker) processResult(result Result) error {
 		}
 
 		// convert sparkplug datatype to json type
-		jsonType, err := metric.ValueToJsonType()
+		jsonType, err := PayloadMetricToJsonType(metric)
 		if err != nil {
 			return err
 		}

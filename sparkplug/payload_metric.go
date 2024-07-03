@@ -48,15 +48,6 @@ type payloadMetric struct {
 	Value        isPayload_Metric_Value `json:"value,omitempty"`
 }
 
-// valueToJsonType will convert a sparkplug datatype to a JSON type,
-// one of: number, string, boolean, array
-func (x *Payload_Metric) ValueToJsonType() (JsonType, error) {
-	if x == nil {
-		return nil, fmt.Errorf("nil metric")
-	}
-	return MetricValueToJsonType(x)
-}
-
 func (x *Payload_Metric) MarshalJSON() ([]byte, error) {
 	var pMetadata *payloadMetaData
 	if x.Metadata != nil {
