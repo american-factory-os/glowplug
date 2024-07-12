@@ -166,3 +166,23 @@ func TestStateCommandTopic(t *testing.T) {
 		}
 	})
 }
+
+func TestEdgeNodeCommandTopic(t *testing.T) {
+	t.Run("Test EdgeNodeCommandTopic", func(t *testing.T) {
+		got := EdgeNodeCommandTopic("group_id", "edge_node_id")
+		want := "spBv1.0/group_id/NCMD/edge_node_id"
+		if got != want {
+			t.Errorf("got %q, want %q", got, want)
+		}
+	})
+}
+
+func TestDeviceCommandTopic(t *testing.T) {
+	t.Run("Test DeviceCommandTopic", func(t *testing.T) {
+		got := DeviceCommandTopic("group_id", "edge_node_id", "device_id")
+		want := "spBv1.0/group_id/DCMD/edge_node_id/device_id"
+		if got != want {
+			t.Errorf("got %q, want %q", got, want)
+		}
+	})
+}

@@ -10,6 +10,8 @@ const (
 	// device data event
 	DDATA Command = "DDATA"
 	// device death event
+	DCMD Command = "DCMD"
+	// device death event
 	DDEATH Command = "DDEATH"
 	// node command event
 	NCMD Command = "NCMD"

@@ -93,6 +93,12 @@ func EdgeNodeDataTopic(groupId, edgeNodeId string) string {
 	return fmt.Sprintf("%s/%s/%s/%s", SPB_NS, groupId, NDATA, edgeNodeId)
 }
 
+// EdgeNodeCommandTopic returns the namespace for a Sparkplug B node cmd
+// namespace/group_id/NCMD/edge_node_id
+func EdgeNodeCommandTopic(groupId, edgeNodeId string) string {
+	return fmt.Sprintf("%s/%s/%s/%s", SPB_NS, groupId, NCMD, edgeNodeId)
+}
+
 // EdgeNodeDeathTopic returns the namespace for a Sparkplug B node death
 // namespace/group_id/NDEATH/edge_node_id
 func EdgeNodeDeathTopic(groupId, edgeNodeId string) string {
@@ -109,6 +115,12 @@ func DeviceBirthTopic(groupId, edgeNodeId, deviceId string) string {
 // namespace/group_id/DDATA/edge_node_id/device_id
 func DeviceDataTopic(groupId, edgeNodeId, deviceId string) string {
 	return fmt.Sprintf("%s/%s/%s/%s/%s", SPB_NS, groupId, DDATA, edgeNodeId, deviceId)
+}
+
+// DeviceCommandTopic returns the namespace for a Sparkplug B device cmd
+// namespace/group_id/DCMD/edge_node_id/device_id
+func DeviceCommandTopic(groupId, edgeNodeId, deviceId string) string {
+	return fmt.Sprintf("%s/%s/%s/%s/%s", SPB_NS, groupId, DCMD, edgeNodeId, deviceId)
 }
 
 // DeviceDeathTopic returns the namespace for a Sparkplug B device death
