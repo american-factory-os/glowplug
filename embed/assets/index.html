@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Glowplug Messages</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            /* Remove margin to use full screen */
+            padding: 0;
+            height: 100vh;
+            /* Full viewport height */
+            display: flex;
+            flex-direction: column;
+            /* Stack h1, messages, and status vertically */
+            overflow: hidden;
+            /* Prevent body scrolling */
+        }
+
+        h1 {
+            font-size: 24px;
+            margin: 10px;
+            /* Small margin for spacing */
+            padding: 0;
+        }
+
+        #messages {
+            border: 1px solid #ccc;
+            padding: 10px;
+            flex: 1;
+            /* Grow to fill remaining height */
+            overflow-y: auto;
+            /* Allow scrolling for messages */
+            background-color: #f9f9f9;
+            margin: 0 10px 10px 10px;
+            /* Small margin around messages */
+            box-sizing: border-box;
+            /* Include padding/border in dimensions */
+        }
+
+        #messages li {
+            list-style: none;
+            padding: 5px 0;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            gap: 10px;
+        }
+
+        #messages li:last-child {
+            border-bottom: none;
+        }
+
+        .timestamp {
+            color: #555;
+            font-size: 0.9em;
+            min-width: 120px;
+        }
+
+        #status-container {
+            margin: 0 10px 10px 10px;
+            /* Small margin for spacing */
+            font-style: italic;
+            color: #555;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Glowplug Messages</h1>
+    <div id="status-container">
+        <p id="addressURL">Websocket Address Here</p>
+        <div id="status">Connecting...</div>
+    </div>
+    <ul id="messages"></ul>
+
+    <script>
+        // Dynamically construct WebSocket URL based on current location
+        const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+        const wsHost = window.location.host; // e.g., localhost:8080 or example.com
+        const wsPath = "/ws";
+        const WebSocketURL = `${wsProtocol}//${wsHost}${wsPath}`;
+        const ws = new WebSocket(WebSocketURL);
+        const messagesList = document.getElementById("messages");
+        const statusDiv = document.getElementById("status");
+        const addressURLDiv = document.getElementById("addressURL");
+
+        addressURLDiv.textContent = "WebSocket URL: " + WebSocketURL;
+
+        ws.onopen = () => {
+            statusDiv.textContent = "Connected to server";
+            ws.send("start"); // Send "start" to trigger server notifications
+        };
+
+        ws.onmessage = (event) => {
+            const message = event.data;
+            const li = document.createElement("li");
+
+            // Create timestamp
+            const timestamp = new Date().toLocaleString("en-US", {
+                hour: "2-digit",
+                minute: "2-digit",
+                second: "2-digit",
+                hour12: true
+            });
+            const timestampSpan = document.createElement("span");
+            timestampSpan.className = "timestamp";
+            timestampSpan.textContent = timestamp;
+
+            // Add timestamp and message to list item
+            li.appendChild(timestampSpan);
+            li.appendChild(document.createTextNode(message));
+
+            // Prepend new message to the top
+            messagesList.insertBefore(li, messagesList.firstChild);
+
+            // Ensure the top is visible
+            messagesList.scrollTop = 0;
+        };
+
+        ws.onerror = (error) => {
+            statusDiv.textContent = "Error occurred";
+            console.error("WebSocket error:", error);
+        };
+
+        ws.onclose = () => {
+            statusDiv.textContent = "Disconnected from server";
+        };
+    </script>
+</body>
+
+</html>

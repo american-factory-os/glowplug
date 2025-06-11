@@ -19,6 +19,7 @@ type Opts struct {
 	MQTTBrokerURL    string
 	PublishBrokerURL string
 	RedisURL         string
+	HTTPPort         int
 }
 
 type glowplug struct {
@@ -55,8 +56,16 @@ func (g *glowplug) Start(ctx context.Context) error {
 		g.logger.Println("enable publishing metric values to redis, ex: --redis redis://localhost:6379/0")
 	}
 
+	httpListenAddr := ""
+	if g.opts.HTTPPort > 0 {
+		g.logger.Println("http and websocket port enabled", g.opts.HTTPPort)
+		httpListenAddr = fmt.Sprintf("0.0.0.0:%d", g.opts.HTTPPort)
+	} else {
+		g.logger.Println("enable http and websocket port to expose metrics, ex: --http 8080")
+	}
+
 	go func() {
-		err := g.wp.Run()
+		err := g.wp.Run(httpListenAddr)
 		if err != nil {
 			g.logger.Fatal(err)
 		}
@@ -143,7 +152,9 @@ func New(logger *log.Logger, opts Opts) (Glowplug, error) {
 		publishBroker = &pb
 	}
 
-	wp, err := NewWorker(logger, rdb, publishBroker)
+	wss := NewWebsocketServer(logger)
+
+	wp, err := NewWorker(logger, rdb, publishBroker, wss)
 	if err != nil {
 		return nil, err
 	}

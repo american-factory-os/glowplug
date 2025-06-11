@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -34,10 +35,21 @@ readable data to MQTT.`,
 		sig := make(chan os.Signal, 1)
 		signal.Notify(sig, os.Interrupt, syscall.SIGTERM)
 
+		httpPort := 0
+		httpPortStr := cmd.Flag("http").Value.String()
+		if len(httpPortStr) > 0 {
+			var err error
+			httpPort, err = strconv.Atoi(httpPortStr)
+			if err != nil {
+				logger.Fatalf("invalid http port: %v", err)
+			}
+		}
+
 		svc, err := service.New(logger, service.Opts{
 			MQTTBrokerURL:    cmd.Flag("broker").Value.String(),
 			RedisURL:         cmd.Flag("redis").Value.String(),
 			PublishBrokerURL: cmd.Flag("publish").Value.String(),
+			HTTPPort:         httpPort,
 		})
 
 		if err != nil {
@@ -74,4 +86,5 @@ func init() {
 	listenCmd.PersistentFlags().StringP("broker", "b", "mqtt://localhost:1883", "MQTT broker URL to listen for Sparkplug messages")
 	listenCmd.PersistentFlags().StringP("publish", "p", "", "Publish human readable Sparkplug metrics values to this MQTT broker, e.g. mqtt://localhost:1883")
 	listenCmd.PersistentFlags().StringP("redis", "r", "", "Redis URL to store Sparkplug data, e.g. redis://localhost:6379/0")
+	listenCmd.PersistentFlags().IntP("http", "w", 0, "HTTP port that exposes Sparkplug data over websockets")
 }

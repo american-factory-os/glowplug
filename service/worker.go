@@ -5,11 +5,14 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net/http"
 	"runtime"
 	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
 
+	"github.com/american-factory-os/glowplug/embed"
 	"github.com/american-factory-os/glowplug/sparkplug"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/redis/go-redis/v9"
@@ -31,7 +34,7 @@ type Result struct {
 }
 
 type Worker interface {
-	Run() error
+	Run(httpListenAddr string) error
 	AddMessage(msg Message) error
 	Stop()
 	Capacity() (current int, size int)
@@ -48,11 +51,19 @@ type worker struct {
 	total         uint64
 	errors        uint64
 	seen          sync.Map
+	wss           WebsocketServer
+	httpStop      chan bool
 }
 
 func (w *worker) Stop() {
 	w.state.Store(STATE_STOPPED)
+
+	// signal the http server to stop
+	w.httpStop <- true
+
+	// close the Message channel to stop processing
 	close(w.messages)
+
 	if w.rdb != nil {
 		rdb := *w.rdb
 		rdb.Close()
@@ -147,6 +158,15 @@ func (w *worker) processResult(result Result) error {
 
 			}(result.topic, metric, w)
 		}
+
+		// push data to websocket server
+		if w.wss.IsRunning() {
+			w.wss.PushData(GlowplugMessage{
+				GlowplugKey: key,
+				Payload:     result.payload,
+				Topic:       result.topic,
+			})
+		}
 	}
 
 	return nil
@@ -187,8 +207,60 @@ func (w *worker) getPublishBroker() (mqtt.Client, error) {
 	return *w.publishBroker, nil
 }
 
-func (w *worker) Run() error {
+func (w *worker) Run(httpListenAddr string) error {
 	w.state.Store(STATE_RUNNING)
+
+	go func() {
+		if len(httpListenAddr) > 0 {
+			// Create an HTTP server
+			server := &http.Server{
+				Addr:    httpListenAddr,
+				Handler: nil, // Use default handler
+			}
+
+			// Serve index.html for the root path ("/")
+			http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+				// Serve index.html for exactly "/" or "/index.html"
+				if r.URL.Path == "/" || r.URL.Path == "/index.html" {
+					w.Header().Set("Content-Type", "text/html; charset=utf-8")
+					if _, err := w.Write([]byte(embed.GetIndexHTML())); err != nil {
+						log.Printf("error serving index.html: %v", err)
+						http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+					}
+					return
+				}
+				// Return 404 for other paths (except WebSocket)
+				http.NotFound(w, r)
+			})
+
+			// Register WebSocket handler for "/ws"
+			http.Handle("/ws", w.wss)
+
+			// Start server in a goroutine
+			go func() {
+				if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+					log.Fatalf("http server error: %v", err)
+				}
+			}()
+
+			// Log server started
+			w.logger.Println("http server started on", httpListenAddr)
+
+			// Wait for a signal
+			<-w.httpStop
+			w.logger.Println("received shutdown signal, stopping http server...")
+
+			// Create a context with a timeout for graceful shutdown
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+
+			// Perform graceful shutdown
+			if err := server.Shutdown(ctx); err != nil {
+				log.Printf("http shutdown error: %v", err)
+			}
+			w.logger.Println("http server stopped")
+		}
+	}()
 
 	go w.processResults()
 
@@ -265,11 +337,12 @@ func (w *worker) Capacity() (current int, size int) {
 	return
 }
 
-func NewWorker(logger *log.Logger, rdb *redis.UniversalClient, publishBroker *mqtt.Client) (Worker, error) {
+func NewWorker(logger *log.Logger, rdb *redis.UniversalClient, publishBroker *mqtt.Client, wss WebsocketServer) (Worker, error) {
 
 	size := runtime.NumCPU() * 100
 
 	state := atomic.Uint32{}
+
 	state.Store(STATE_STOPPED)
 
 	return &worker{
@@ -281,5 +354,7 @@ func NewWorker(logger *log.Logger, rdb *redis.UniversalClient, publishBroker *mq
 		rdb:           rdb,
 		publishBroker: publishBroker,
 		seen:          sync.Map{},
+		wss:           wss,
+		httpStop:      make(chan bool, 1),
 	}, nil
 }
