@@ -8,7 +8,7 @@ import (
 
 func TestWorkerCapacity(t *testing.T) {
 	logger := log.New(io.Discard, "", 0)
-	wIface, err := NewWorker(logger, nil, nil)
+	wIface, err := NewWorker(logger, nil, nil, nil)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
