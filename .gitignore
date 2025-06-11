@@ -29,5 +29,8 @@
 
 # !Makefile
 
+!docker-compose.yml
+!/mosquitto
+
 # ...even if they are in subdirectories
 !*/

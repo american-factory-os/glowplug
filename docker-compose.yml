@@ -1,0 +1,43 @@
+services:
+  glowplug:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: glowplug:local
+    ports:
+      - "8000:8000"
+    command: listen --broker mqtt://mosquitto:1883 --redis redis://redis:6379/0 --publish mqtt://mosquitto:1883 --http 8000
+    depends_on:
+      - mosquitto
+      - redis
+    networks:
+      - glowplug-network
+
+  mosquitto:
+    image: eclipse-mosquitto:latest
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf
+      - mosquitto-data:/mosquitto/data
+      - mosquitto-log:/mosquitto/log
+    networks:
+      - glowplug-network
+
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - glowplug-network
+
+networks:
+  glowplug-network:
+    driver: bridge
+
+volumes:
+  mosquitto-data:
+  mosquitto-log:
+  redis-data:

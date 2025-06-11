@@ -7,7 +7,7 @@
 # Stage 1 (to create a "build" image, ~850MB)                                 #
 ###############################################################################
 # Image from https://hub.docker.com/_/golang
-FROM golang:1.22.3 AS builder
+FROM golang:1.23.0-alpine AS builder
 # smoke test to verify if golang is available
 RUN go version
 
@@ -24,15 +24,15 @@ ARG GOARCH=amd64
 ARG GOCGO_ENABLED=0
 ARG VERSION=0.0.0
 ARG REVISION=development
-   
+
 RUN GOOS=${GOOS} \
     GOARCH=${GOARCH} \    
     GOCGO_ENABLED=${GOCGO_ENABLED} \
     echo "building version ${VERSION} revision ${REVISION}" && \
-     go build \
-     -trimpath \
-     -ldflags="-w -s -X 'main.Revision=${REVISION}' -X 'main.Version=${VERSION}'" \
-     -o glowplug main.go
+    go build \
+    -trimpath \
+    -ldflags="-w -s -X 'main.Revision=${REVISION}' -X 'main.Version=${VERSION}'" \
+    -o glowplug main.go
 
 RUN go test -cover -v ./...
 
