@@ -332,8 +332,11 @@ func (w *worker) AddMessage(msg Message) error {
 
 // Capacity returns current message capacity and size
 func (w *worker) Capacity() (current int, size int) {
-	current = cap(w.messages)
 	size = w.size
+	current = size - len(w.messages)
+	if current < 0 {
+		current = 0
+	}
 	return
 }
 
