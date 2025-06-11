@@ -10,17 +10,17 @@ If you need to know the current value of a specific metric on your edge without 
 
 Connect to a UNS and view SparkplugB metrics on a webpage (handy for exploring):
 ```bash
-docker run aphexddb/glowplug:latest listen --broker mqtt://localhost:1883 --http 8000
+docker run -p 8000:8000 aphexddb/glowplug:latest listen --broker mqtt://localhost:1883 --http 8000
 ```
 
 Next, add a redis url to store current values...
 ```bash
-docker run aphexddb/glowplug:latest listen --broker mqtt://localhost:1883 --http 8000 --redis redis://localhost:6379/0
+docker run -p 8000:8000 aphexddb/glowplug:latest listen --broker mqtt://localhost:1883 --http 8000 --redis redis://localhost:6379/0
 ```
 
 ...And then you can publish simplified metrics to your broker:
 ```bash
-docker run aphexddb/glowplug:latest listen --broker mqtt://localhost:1883 --http 8000 --redis redis://localhost:6379/0 --publish mqtt://localhost:1883
+docker run -p 8000:8000 aphexddb/glowplug:latest listen --broker mqtt://localhost:1883 --http 8000 --redis redis://localhost:6379/0 --publish mqtt://localhost:1883
 ```
 
 Choose whatever flags suit your neeeds! Note: You may need to set network to "host" so docker can access local services, e.g.: `--network="host"`
