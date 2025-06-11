@@ -161,10 +161,12 @@ func (w *worker) processResult(result Result) error {
 
 		// push data to websocket server
 		if w.wss.IsRunning() {
-			w.wss.PushData(GlowplugMessage{
-				GlowplugKey: key,
-				Payload:     result.payload,
-				Topic:       result.topic,
+
+			w.wss.PushData(WebsocketMetricMessage{
+				Topic: result.topic,
+				Alias: metric.GetAlias(),
+				Name:  metric.GetName(),
+				Value: jsonType,
 			})
 		}
 	}

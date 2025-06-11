@@ -13,31 +13,32 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-// GlowplugMessage represents a message read from glowplug
-type GlowplugMessage struct {
-	GlowplugKey string             `json:"glowplug_key"`
-	Topic       *sparkplug.Topic   `json:"topic"`
-	Payload     *sparkplug.Payload `json:"payload"`
+// WebsocketMetricMessage represents a JSON SparkplugB metric sent over websocket
+type WebsocketMetricMessage struct {
+	Topic *sparkplug.Topic   `json:"topic"`
+	Alias uint64             `json:"alias"`
+	Name  string             `json:"name"`
+	Value sparkplug.JsonType `json:"value"`
 }
 
 // WebSocketHandler handles incoming websocket connections
 type WebsocketServer interface {
 	ServeHTTP(w http.ResponseWriter, r *http.Request)
-	PushData(data GlowplugMessage) error
+	PushData(data WebsocketMetricMessage) error
 	IsRunning() bool
 }
 
 type websocketServer struct {
 	upgrader websocket.Upgrader
 	logger   *log.Logger
-	dataChan chan GlowplugMessage
+	dataChan chan WebsocketMetricMessage
 	clients  map[*websocket.Conn]bool // Map of active clients
 	mu       sync.RWMutex             // Mutex for thread-safe client access
 	running  bool                     // Indicates if the server is running
 }
 
 // PushData sends data to the websocket server's channel
-func (wss *websocketServer) PushData(data GlowplugMessage) error {
+func (wss *websocketServer) PushData(data WebsocketMetricMessage) error {
 	select {
 	case wss.dataChan <- data:
 		return nil
@@ -144,7 +145,7 @@ func NewWebsocketServer(logger *log.Logger) WebsocketServer {
 			},
 		},
 		logger:   logger,
-		dataChan: make(chan GlowplugMessage, 100), // Buffered channel to hold messages
+		dataChan: make(chan WebsocketMetricMessage, 100), // Buffered channel to hold messages
 		clients:  make(map[*websocket.Conn]bool),
 		running:  false,
 	}
