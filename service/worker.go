@@ -114,7 +114,7 @@ func (w *worker) processResult(result Result) error {
 		_, seen := w.seen.Load(key)
 		if !seen {
 			w.seen.Store(key, true)
-			w.logger.Println("new metric encountered", metric.Name, typeName, jsonType)
+			w.logger.Printf("first seen: [%s] %s alias:%d %s:%s\n", result.sourceTopic, metric.Name, metric.Alias, typeName, jsonType)
 		}
 
 		// pipeline redis commands
