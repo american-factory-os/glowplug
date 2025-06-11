@@ -1,12 +1,14 @@
 module github.com/american-factory-os/glowplug
 
-go 1.22.3
-toolchain go1.24.1
+go 1.23.0
+
+toolchain go1.24.4
 
 require (
 	github.com/eclipse/paho.mqtt.golang v1.4.3
 	github.com/golang/protobuf v1.5.4
 	github.com/gopcua/opcua v0.5.3
+	github.com/gorilla/websocket v1.5.3
 	github.com/redis/go-redis/v9 v9.5.5
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/viper v1.19.0
@@ -20,7 +22,6 @@ require (
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/google/go-cmp v0.6.0 // indirect
-	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/magiconair/properties v1.8.7 // indirect
