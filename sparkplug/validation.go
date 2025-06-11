@@ -9,15 +9,29 @@ var topicRegexp = []*regexp.Regexp{}
 
 func init() {
 
+	// Regex component for Group ID, Edge Node ID, and Device ID
+	// Allows alphanumeric, hyphen, underscore, and period; excludes MQTT reserved chars (+, #, /)
+	idComponent := `[a-zA-Z0-9][a-zA-Z0-9_\-\.]*`
+
 	patterns := []string{
-		`^` + SPB_NS + `/` + string(STATE) + `/[^/]+$`,
-		`^` + SPB_NS + `/[^/]+/` + string(DBIRTH) + `/[^/]+/[^/]+$`,
-		`^` + SPB_NS + `/[^/]+/` + string(DDATA) + `/[^/]+/[^/]+$`,
-		`^` + SPB_NS + `/[^/]+/` + string(DDEATH) + `/[^/]+/[^/]+$`,
-		`^` + SPB_NS + `/[^/]+/` + string(NBIRTH) + `/[^/]+$`,
-		`^` + SPB_NS + `/[^/]+/` + string(NDATA) + `/[^/]+$`,
-		`^` + SPB_NS + `/[^/]+/` + string(NCMD) + `/[^/]+$`,
-		`^` + SPB_NS + `/[^/]+/` + string(NDEATH) + `/[^/]+$`,
+		// STATE: spBv1.0/STATE/<ClientID>
+		`^` + SPB_NS + `/` + string(STATE) + `/` + idComponent + `$`,
+		// NBIRTH: spBv1.0/<GroupID>/NBIRTH/<EdgeNodeID>
+		`^` + SPB_NS + `/` + idComponent + `/` + string(NBIRTH) + `/` + idComponent + `$`,
+		// NDEATH: spBv1.0/<GroupID>/NDEATH/<EdgeNodeID>
+		`^` + SPB_NS + `/` + idComponent + `/` + string(NDEATH) + `/` + idComponent + `$`,
+		// NDATA: spBv1.0/<GroupID>/NDATA/<EdgeNodeID>
+		`^` + SPB_NS + `/` + idComponent + `/` + string(NDATA) + `/` + idComponent + `$`,
+		// NCMD: spBv1.0/<GroupID>/NCMD/<EdgeNodeID>
+		`^` + SPB_NS + `/` + idComponent + `/` + string(NCMD) + `/` + idComponent + `$`,
+		// DBIRTH: spBv1.0/<GroupID>/DBIRTH/<EdgeNodeID>/<DeviceID>
+		`^` + SPB_NS + `/` + idComponent + `/` + string(DBIRTH) + `/` + idComponent + `/` + idComponent + `$`,
+		// DDEATH: spBv1.0/<GroupID>/DDEATH/<EdgeNodeID>/<DeviceID>
+		`^` + SPB_NS + `/` + idComponent + `/` + string(DDEATH) + `/` + idComponent + `/` + idComponent + `$`,
+		// DDATA: spBv1.0/<GroupID>/DDATA/<EdgeNodeID>/<DeviceID>
+		`^` + SPB_NS + `/` + idComponent + `/` + string(DDATA) + `/` + idComponent + `/` + idComponent + `$`,
+		// DCMD: spBv1.0/<GroupID>/DCMD/<EdgeNodeID>/<DeviceID>
+		`^` + SPB_NS + `/` + idComponent + `/` + string(DCMD) + `/` + idComponent + `/` + idComponent + `$`,
 	}
 
 	for _, pattern := range patterns {
@@ -33,7 +47,7 @@ func IsValidSparkplugBTopic(topic string) bool {
 		return false
 	}
 
-	if len(topic) < len(SPB_NS) {
+	if len(topic) < len(SPB_NS)+1 {
 		return false
 	}
 

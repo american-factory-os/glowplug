@@ -14,34 +14,44 @@ func TestIsValidSparkplugBTopic(t *testing.T) {
 			want:  true,
 		},
 		{
-			name:  "valid device DBIRTH topic",
+			name:  "valid DBIRTH topic",
 			topic: "spBv1.0/group_id/DBIRTH/edge_node_id/device_id",
 			want:  true,
 		},
 		{
-			name:  "valid device DDATA topic",
+			name:  "valid DDATA topic",
 			topic: "spBv1.0/group_id/DDATA/edge_node_id/device_id",
 			want:  true,
 		},
 		{
-			name:  "valid device DDEATH topic",
+			name:  "valid DDEATH topic",
 			topic: "spBv1.0/group_id/DDEATH/edge_node_id/device_id",
 			want:  true,
 		},
 		{
-			name:  "valid device NBIRTH topic",
+			name:  "valid NBIRTH topic",
 			topic: "spBv1.0/group_id/NBIRTH/edge_node_id",
 			want:  true,
 		},
 		{
-			name:  "valid device NDATA topic",
+			name:  "valid NDATA topic",
 			topic: "spBv1.0/group_id/NDATA/edge_node_id",
 			want:  true,
 		},
 		{
-			name:  "valid device NCMD topic",
+			name:  "valid NCMD topic",
 			topic: "spBv1.0/group_id/NCMD/edge_node_id",
 			want:  true,
+		},
+		{
+			name:  "valid DCMD topic",
+			topic: "spBv1.0/group_id/DCMD/edge_node_id/device_id",
+			want:  true,
+		},
+		{
+			name:  "invalid DCMD topic",
+			topic: "spBv1.0/group_id/DCMD/edge_node_id",
+			want:  false,
 		},
 		{
 			name:  "valid device NDEATH topic",
@@ -61,6 +71,21 @@ func TestIsValidSparkplugBTopic(t *testing.T) {
 		{
 			name:  "invalid topic",
 			topic: "spBv1.0/group_id/FAKE/edge_node_id/device_id/extra",
+			want:  false,
+		},
+		{
+			name:  "empty topic",
+			topic: "",
+			want:  false,
+		},
+		{
+			name:  "short topic",
+			topic: "spBv1.0",
+			want:  false,
+		},
+		{
+			name:  "malformed topic",
+			topic: "spBv1.1/group_id+bad/DDATA/edge_node_id/device_id",
 			want:  false,
 		},
 	}
