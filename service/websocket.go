@@ -33,7 +33,13 @@ func (wss *websocketServer) PushData(data WebsocketMetricMessage) error {
 	case wss.dataChan <- data:
 		return nil
 	default:
-		return fmt.Errorf("websocket server channel is full, unable to push data: %v", data)
+		// channel full, drop oldest message to make room
+		select {
+		case <-wss.dataChan:
+		default:
+		}
+		wss.dataChan <- data
+		return nil
 	}
 }
 
@@ -135,7 +141,7 @@ func NewWebsocketServer(logger *log.Logger) WebsocketServer {
 			},
 		},
 		logger:   logger,
-		dataChan: make(chan WebsocketMetricMessage, 100), // Buffered channel to hold messages
+		dataChan: make(chan WebsocketMetricMessage, 1000), // Buffered channel to hold messages
 		clients:  make(map[*websocket.Conn]bool),
 		running:  false,
 	}
