@@ -4,36 +4,34 @@
 ## Why Glowplug?
 If you're new to IIoT or industrial automation, Sparkplug data can be difficult to work with, and it's binary encoding is not human readable. Glowplug is designed to demystify Sparkplug data, by making every metric value more accessible and human readable. 
 
-If you need to know the current value of a specific metric on your edge without talking to a MQTT broker, Glowplug makes it available for you in a browser, redis, or JSON in your MQTT broker. 
+If you need to know the current value of a specific metric on your edge without talking binary SparkplugB in a MQTT broker, Glowplug makes it available for you in a browser, websockets, redis, or even another MQTT broker. 
 
 ## Quickstart
 
-Connect to a UNS and view SparkplugB metrics on a webpage (handy for exploring):
+Connect to a UNS and view SparkplugB metrics on a webpage: [http://localhost:8000](http://localhost:8000):
 ```bash
-docker run -p 8000:8000 aphexddb/glowplug:latest listen -b mqtt://localhost:1883 -w 8000
+docker run -p 8000:8000 aphexddb/glowplug:latest listen --http 8000 -b mqtt://localhost:1883
 ```
 
-Next, add a redis url to store current values...
+Optionally, publish simplified metrics back to your broker:
 ```bash
-docker run -p 8000:8000 aphexddb/glowplug:latest listen -b mqtt://localhost:1883 -w 8000 --redis redis://localhost:6379/0
+docker run -p 8000:8000 aphexddb/glowplug:latest listen --http 8000 -b mqtt://localhost:1883 -p mqtt://localhost:1883
 ```
 
-...And then you can publish simplified metrics to your broker:
+You can also add a redis url to store current SparkplugB metrics from your UNS:
 ```bash
-docker run -p 8000:8000 aphexddb/glowplug:latest listen -b mqtt://localhost:1883 -w 8000 --redis redis://localhost:6379/0 --publish mqtt://localhost:1883
+docker run -p 8000:8000 aphexddb/glowplug:latest listen --http 8000 -b mqtt://localhost:1883 -p mqtt://localhost:1883 -r redis://localhost:6379/0
 ```
 
 Choose whatever flags suit your neeeds! Note: You may need to set network to "host" so docker can access local services, e.g.: `--network="host"`
-
-Run 
 
 ## Features
 
 * MQTT Integration: Connect to your MQTT broker and listen for Sparkplug B messages.
 * Sparkplug B Support: Consumes all Sparkplug v3.0 messages and topics
 * HTTP and websocket support: View your UNS data live in a browser
-* Redis Support: Store the last known values of Sparkplug metrics in Redis, and optionally subscribe to changes.
 * UNS compatible: Publishes to unique and consistent Redis keys and MQTT topic names.
+* Redis Support: Store the last known values of Sparkplug metrics in Redis, and optionally subscribe to changes.
 * Human-readable: Optionally publish Sparkplug metrics to human-readable MQTT topics.
 
 ## HTTP and Websockets
@@ -81,7 +79,21 @@ will be mapped as follows:
     glowplug/Plant1/Area3/Line4/Cell2/Heater/TempSensor/Current/Celsius
     ```
 
-That same metric is published via websocket as follows:
+Sparkplug metrics from your UNS are formatted nicely for downstream consumption. For example, here is a node birth and device data message using the above example:
+```json
+{
+    "topic": {
+        "command": "NBIRTH",
+        "group_id": "Plant1:Area3:Line4:Cell2",
+        "edge_node_id": "Heater",
+        "device_id": "",
+        "has_device": false
+    },
+    "alias": 1,
+    "name": "Node Control/Rebirth",
+    "value": false
+}
+```
 ```json
 {
     "topic": {
@@ -96,7 +108,6 @@ That same metric is published via websocket as follows:
     "value": 42.0
 }
 ```
-
 ## Sparkplug Go Module
 
 Glowplug also includes a Go module for interacting with Sparkplug B protocol buffers. Install it with:

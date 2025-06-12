@@ -163,10 +163,11 @@ func (w *worker) processResult(result Result) error {
 		if w.wss.IsRunning() {
 
 			w.wss.PushData(WebsocketMetricMessage{
-				Topic: result.topic,
-				Alias: metric.GetAlias(),
-				Name:  metric.GetName(),
-				Value: jsonType,
+				Topic:     result.topic,
+				Alias:     metric.GetAlias(),
+				Name:      metric.GetName(),
+				Value:     jsonType,
+				Timestamp: metric.Timestamp,
 			})
 		}
 	}
