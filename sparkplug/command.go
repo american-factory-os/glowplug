@@ -9,13 +9,13 @@ const (
 	DBIRTH Command = "DBIRTH"
 	// device data event
 	DDATA Command = "DDATA"
-	// device death event
+	// device command event
 	DCMD Command = "DCMD"
 	// device death event
 	DDEATH Command = "DDEATH"
 	// node command event
 	NCMD Command = "NCMD"
-	// device command event
+	// node birth event
 	NBIRTH Command = "NBIRTH"
 	// node data event
 	NDATA Command = "NDATA"
