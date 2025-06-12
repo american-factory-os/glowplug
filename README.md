@@ -10,20 +10,22 @@ If you need to know the current value of a specific metric on your edge without 
 
 Connect to a UNS and view SparkplugB metrics on a webpage (handy for exploring):
 ```bash
-docker run -p 8000:8000 aphexddb/glowplug:latest listen --broker mqtt://localhost:1883 --http 8000
+docker run -p 8000:8000 aphexddb/glowplug:latest listen -b mqtt://localhost:1883 -w 8000
 ```
 
 Next, add a redis url to store current values...
 ```bash
-docker run -p 8000:8000 aphexddb/glowplug:latest listen --broker mqtt://localhost:1883 --http 8000 --redis redis://localhost:6379/0
+docker run -p 8000:8000 aphexddb/glowplug:latest listen -b mqtt://localhost:1883 -w 8000 --redis redis://localhost:6379/0
 ```
 
 ...And then you can publish simplified metrics to your broker:
 ```bash
-docker run -p 8000:8000 aphexddb/glowplug:latest listen --broker mqtt://localhost:1883 --http 8000 --redis redis://localhost:6379/0 --publish mqtt://localhost:1883
+docker run -p 8000:8000 aphexddb/glowplug:latest listen -b mqtt://localhost:1883 -w 8000 --redis redis://localhost:6379/0 --publish mqtt://localhost:1883
 ```
 
 Choose whatever flags suit your neeeds! Note: You may need to set network to "host" so docker can access local services, e.g.: `--network="host"`
+
+Run 
 
 ## Features
 
@@ -35,36 +37,20 @@ Choose whatever flags suit your neeeds! Note: You may need to set network to "ho
 * Human-readable: Optionally publish Sparkplug metrics to human-readable MQTT topics.
 
 ## HTTP and Websockets
-* The flag `--http` contains the HTTP port glowplug will serve up 
-  * HTTP is disabled unless the flag is set
+* The flag `--http` or `-w` enables an HTTP server on the specified port. HTTP is disabled unless the flag is set.
 * Sparkplug metrics are published on the path`/ws`, e.g. `ws://localhost:8000/ws`
-
-If HTTP is enabled, view your UNS data at http://localhost:8000, or whatever port you have configured. Example metric message:
-```json
-{
-    "topic": {
-        "command": "DDATA",
-        "group_id": "GroupName",
-        "edge_node_id": "EdgeNodeId",
-        "device_id": "D48AFCC71710",
-        "has_device": true
-    },
-    "alias": 7,
-    "name": "Relay/Zone6/State",
-    "value": false
-}
-```
+Sparkplug metrics are published over HTTP and are viewable on the specified port, and are available via websocket at http://localhost:8000.
 
 ## MQTT
-* The flag `--broker` contains the MQTT broker glowplug will listen for Sparkplug messages.
+* The flag `--broker` or `-b` contains the MQTT broker glowplug will listen for Sparkplug messages.
   * The value defaults to `mqtt://localhost:1883` (commonly used for [mosquitto](https://github.com/eclipse/mosquitto)).
-* The flag `--publish` will publish each metrics to a unique topic in a UNS (more below on this).   
+* The flag `--publish` or `-p` will publish each metrics to a unique topic in a UNS (more below on this).   
   * **Note:** this flag will generate a new topic in your broker for each Sparkplug metric published. If you have 100k's of tags there may be a compute impact.
 
 View your MQTT broker directly with [MQTT Explorer](https://mqtt-explorer.com/).
 
 ## Redis
-* The flag `--redis` will specify the redis server for glowplug to store all Sparkplug metrics from birth and data messages in a [SET](https://redis.io/docs/latest/commands/set/), and publish them to a [channel](https://redis.io/docs/latest/commands/pubsub-channels/) of the same key as the set.
+* The flag `--redis` or `-r` will specify the redis server for glowplug to store all Sparkplug metrics from birth and data messages in a [SET](https://redis.io/docs/latest/commands/set/), and publish them to a [channel](https://redis.io/docs/latest/commands/pubsub-channels/) of the same key as the set.
 
 You can explore glowplug data in Redis with [Redis Insight](https://redis.io/insight/). All data is prefixed with the value `glowplug`, so you can search for `glowplug:*` to see all the keys. Glowplug also stores all the metric data types it has seen in the hash `glowplug:metric_types`. 
 
@@ -94,6 +80,22 @@ will be mapped as follows:
     ```txt
     glowplug/Plant1/Area3/Line4/Cell2/Heater/TempSensor/Current/Celsius
     ```
+
+That same metric is published via websocket as follows:
+```json
+{
+    "topic": {
+        "command": "DDATA",
+        "group_id": "Plant1:Area3:Line4:Cell2",
+        "edge_node_id": "Heater",
+        "device_id": "TempSensor",
+        "has_device": true
+    },
+    "alias": 7,
+    "name": "Current/Celsius",
+    "value": 42.0
+}
+```
 
 ## Sparkplug Go Module
 
