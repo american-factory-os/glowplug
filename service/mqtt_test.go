@@ -54,6 +54,12 @@ func TestValidateMqttURL(t *testing.T) {
 			want:    false,
 			wantErr: true,
 		},
+		{
+			name:    "empty url",
+			args:    args{""},
+			want:    false,
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
