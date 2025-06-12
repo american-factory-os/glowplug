@@ -44,6 +44,7 @@ type worker struct {
 	state         *atomic.Uint32
 	logger        *log.Logger
 	size          int
+	workers       int
 	messages      chan Message
 	results       chan Result
 	rdb           *redis.UniversalClient
@@ -51,6 +52,7 @@ type worker struct {
 	total         uint64
 	errors        uint64
 	seen          sync.Map
+	seenTTL       time.Duration
 	wss           WebsocketServer
 	httpStop      chan bool
 }
@@ -113,9 +115,9 @@ func (w *worker) processResult(result Result) error {
 		typeName := sparkplug.DataType_name[int32(metric.Datatype)]
 		_, seen := w.seen.Load(key)
 		if !seen {
-			w.seen.Store(key, true)
 			w.logger.Printf("first seen: [%s] %s alias:%d %s:%s\n", result.sourceTopic, metric.Name, metric.Alias, typeName, jsonType)
 		}
+		w.seen.Store(key, time.Now())
 
 		// pipeline redis commands
 		if w.rdb != nil {
@@ -202,12 +204,77 @@ func (w *worker) processResults() error {
 	}
 }
 
+func (w *worker) cleanupSeen() {
+	ticker := time.NewTicker(w.seenTTL)
+	defer ticker.Stop()
+	for range ticker.C {
+		if w.state.Load() == STATE_STOPPED {
+			return
+		}
+		now := time.Now()
+		w.seen.Range(func(k, v interface{}) bool {
+			if ts, ok := v.(time.Time); ok {
+				if now.Sub(ts) > w.seenTTL {
+					w.seen.Delete(k)
+				}
+			}
+			return true
+		})
+	}
+}
+
 func (w *worker) getPublishBroker() (mqtt.Client, error) {
 	if w.publishBroker == nil {
 		return nil, errors.New("publish broker not available")
 	}
 
 	return *w.publishBroker, nil
+}
+
+func (w *worker) processMessage(msg Message) {
+	if w.state.Load() == STATE_STOPPED {
+		return
+	}
+
+	topic, tErr := sparkplug.ToTopic(msg.topic)
+	if tErr != nil {
+		w.results <- Result{
+			sourceTopic: msg.topic,
+			err:         tErr,
+		}
+		return
+	}
+
+	var processCmd bool
+
+	switch topic.Command {
+	case sparkplug.NBIRTH, sparkplug.NDATA, sparkplug.DBIRTH, sparkplug.DDATA:
+		processCmd = true
+	}
+
+	if processCmd {
+		var payload sparkplug.Payload
+		if err := proto.Unmarshal(msg.payload, &payload); err != nil {
+			w.results <- Result{
+				sourceTopic: msg.topic,
+				err:         err,
+			}
+			return
+		}
+
+		w.results <- Result{
+			err:         nil,
+			sourceTopic: msg.topic,
+			payload:     &payload,
+			topic:       topic,
+		}
+	}
+}
+
+func (w *worker) processMessages() {
+	for msg := range w.messages {
+		w.processMessage(msg)
+	}
 }
 
 func (w *worker) Run(httpListenAddr string) error {
@@ -267,61 +334,20 @@ func (w *worker) Run(httpListenAddr string) error {
 
 	go w.processResults()
 
-	for {
-		msg, ok := <-w.messages
-
-		if !ok {
-			return fmt.Errorf("channel closed, no longer processing messages")
-		}
-
-		if w.state.Load() == STATE_STOPPED {
-			return fmt.Errorf("worker pool stopped, dropping message on topic %s", msg.topic)
-		}
-
-		topic, tErr := sparkplug.ToTopic(msg.topic)
-		if tErr != nil {
-			w.results <- Result{
-				sourceTopic: msg.topic,
-				err:         tErr,
-			}
-			continue
-		}
-
-		var processCmd bool
-
-		// process node and device birth and data commands
-		switch topic.Command {
-		case sparkplug.NBIRTH:
-			fallthrough
-		case sparkplug.NDATA:
-			fallthrough
-		case sparkplug.DBIRTH:
-			fallthrough
-		case sparkplug.DDATA:
-			processCmd = true
-		default:
-			processCmd = false
-		}
-
-		if processCmd {
-			var payload sparkplug.Payload
-			err := proto.Unmarshal(msg.payload, &payload)
-			if err != nil {
-				w.results <- Result{
-					sourceTopic: msg.topic,
-					err:         err,
-				}
-				continue
-			}
-
-			w.results <- Result{
-				err:         nil,
-				sourceTopic: msg.topic,
-				payload:     &payload,
-				topic:       topic,
-			}
-		}
+	var wg sync.WaitGroup
+	for i := 0; i < w.workers; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			w.processMessages()
+		}()
 	}
+
+	go w.cleanupSeen()
+
+	wg.Wait()
+	close(w.results)
+	return nil
 }
 
 func (w *worker) AddMessage(msg Message) error {
@@ -346,6 +372,7 @@ func (w *worker) Capacity() (current int, size int) {
 func NewWorker(logger *log.Logger, rdb *redis.UniversalClient, publishBroker *mqtt.Client, wss WebsocketServer) (Worker, error) {
 
 	size := runtime.NumCPU() * 100
+	workers := runtime.NumCPU()
 
 	state := atomic.Uint32{}
 
@@ -355,11 +382,13 @@ func NewWorker(logger *log.Logger, rdb *redis.UniversalClient, publishBroker *mq
 		state:         &state,
 		logger:        logger,
 		size:          size,
+		workers:       workers,
 		messages:      make(chan Message, size),
 		results:       make(chan Result, size),
 		rdb:           rdb,
 		publishBroker: publishBroker,
 		seen:          sync.Map{},
+		seenTTL:       time.Hour,
 		wss:           wss,
 		httpStop:      make(chan bool, 1),
 	}, nil
